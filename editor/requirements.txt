@@ -1,0 +1,3 @@
+mesop
+requests
+google_generativeai
