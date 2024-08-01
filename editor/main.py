@@ -14,7 +14,7 @@ DEFAULT_URL = "http://localhost"
 EXAMPLE_PROGRAM = """
 import mesop as me
 
-@me.page(title="Example App", security_policy=me.SecurityPolicy(allowed_iframe_parents=["localhost:*"]))
+@me.page()
 def app():
   me.text("Hello World")
 """.strip()
@@ -341,8 +341,11 @@ def load_url(e: me.ClickEvent):
 
 def run_code(e: me.ClickEvent):
   s = me.state(State)
-  code = s.code
   s.code_placeholder = s.code
+  code = s.code.replace(
+    "@me.page()",
+    '@me.page(security_policy=me.SecurityPolicy(allowed_iframe_parents=["localhost:*"]))',
+  )
   yield
   result = requests.post(s.url + "exec", data={"code": base64.b64encode(code.encode("utf-8"))})
   if result.status_code == 200:
