@@ -7,6 +7,7 @@ import mesop.labs as mel
 def code_mirror_editor_component(
   *,
   code: str = "",
+  theme: str = "default",
   on_editor_blur: Callable[[mel.WebEvent], Any] | None = None,
   height: str = "100%",
   width: str = "100%",
@@ -22,6 +23,7 @@ def code_mirror_editor_component(
     events=events,
     properties={
       "code": code,
+      "theme": theme,
       "height": height,
       "width": width,
     },

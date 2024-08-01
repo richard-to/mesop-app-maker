@@ -1,25 +1,26 @@
 import {
   LitElement,
   html,
-} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js';
+} from "https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js";
 
-import 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.js';
-import 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/python/python.js';
+import "https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.js";
+import "https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/python/python.js";
 
 class CodeMirrorEditorComponent extends LitElement {
   static properties = {
-    code: {type: String},
-    editorBlurEvent: {type: String},
-    height: {type: String},
-    width: {type: String},
+    code: { type: String },
+    theme: { type: String },
+    editorBlurEvent: { type: String },
+    height: { type: String },
+    width: { type: String },
   };
 
   constructor() {
     super();
-    this.width = '100%';
-    this.height = '100%';
-    this.code = '';
-    this.editor = null;
+    this.width = "100%";
+    this.height = "100%";
+    this.code = "";
+    (this.theme = "default"), (this.editor = null);
     this.editorState = null;
   }
 
@@ -32,31 +33,34 @@ class CodeMirrorEditorComponent extends LitElement {
   }
 
   renderEditor() {
-    this.editor = CodeMirror.fromTextArea(this.querySelector('#editor'), {
-      mode: 'python',
+    this.editor = CodeMirror.fromTextArea(this.querySelector("#editor"), {
+      mode: "python",
       lineNumbers: true,
-      theme: 'default',
+      theme: this.theme,
       readOnly: false,
     });
     this.editor.setValue(this.code);
     this.editor.setSize(this.width, this.height);
-    this.editor.on('blur', (cm) => {
+    this.editor.on("blur", (cm) => {
       if (this.editorBlurEvent) {
         this.code = cm.getValue();
         this.dispatchEvent(
           new MesopEvent(this.editorBlurEvent, {
             code: this.code,
-          }),
+          })
         );
       }
     });
   }
 
   updated(changedProperties) {
-    if (changedProperties.has('code')) {
+    if (changedProperties.has("code")) {
       if (this.code !== this.editor.getValue()) {
         this.editor.setValue(this.code);
       }
+    }
+    if (changedProperties.has("theme")) {
+      this.editor.setOption("theme", this.theme);
     }
   }
 
@@ -66,6 +70,6 @@ class CodeMirrorEditorComponent extends LitElement {
 }
 
 customElements.define(
-  'code-mirror-editor-component',
-  CodeMirrorEditorComponent,
+  "code-mirror-editor-component",
+  CodeMirrorEditorComponent
 );

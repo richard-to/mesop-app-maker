@@ -12,9 +12,7 @@ class State:
 
 @me.page(
   path="/web_component/code_mirror_editor/code_mirror_editor_app",
-  stylesheets=[
-    "https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
-  ],
+  stylesheets=["https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"],
   security_policy=me.SecurityPolicy(
     allowed_connect_srcs=[
       "https://cdnjs.cloudflare.com",
@@ -50,9 +48,7 @@ def page():
         style=me.Style(
           background="#fff",
           padding=me.Padding.all(20),
-          border=me.Border.all(
-            me.BorderSide(width=1, style="solid", color="#ececec")
-          ),
+          border=me.Border.all(me.BorderSide(width=1, style="solid", color="#ececec")),
         )
       ):
         me.code(state.code)

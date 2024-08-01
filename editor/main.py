@@ -3,13 +3,13 @@ import time
 
 import requests
 import mesop as me
-
+import mesop.labs as mel
 import components as mex
 from web_components import code_mirror_editor_component
 
-_COLOR_MENU_PANE = "#eaf0fa"
-_COLOR_MENU = "#f6f8fc"
-_COLOR_BG = "#fafafa"
+_COLOR_MENU_PANE = me.theme_var("surface-container")
+_COLOR_MENU = me.theme_var("surface-container-low")
+_COLOR_BG = me.theme_var("surface-container-lowest")
 DEFAULT_URL = "http://localhost"
 EXAMPLE_PROGRAM = """
 import mesop as me
@@ -36,7 +36,7 @@ class State:
   error: str
   info: str
   api_key: str
-  model: str = "gemini-1.5-flash-latest"
+  model: str = "gemini-1.5-flash"
   menu_open: bool = True
   menu_open_type: str = "settings"
   revision_mode: bool = False
@@ -44,7 +44,10 @@ class State:
 
 @me.page(
   title="Mesop AI Editor",
-  stylesheets=["https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"],
+  stylesheets=[
+    "https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css",
+    "https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/tomorrow-night-eighties.min.css",
+  ],
   security_policy=me.SecurityPolicy(
     allowed_connect_srcs=[
       "https://cdnjs.cloudflare.com",
@@ -67,7 +70,7 @@ def main():
         background=_COLOR_MENU_PANE,
         padding=me.Padding.all(10),
         border=me.Border(
-          right=me.BorderSide(width=1, color="#ececec", style="solid"),
+          right=me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid"),
         ),
       )
     ):
@@ -92,12 +95,27 @@ def main():
         with me.tooltip(message="Settings"):
           me.icon("settings")
 
+      with me.box(
+        on_click=on_click_theme_brightness,
+        style=me.Style(
+          align_content="center",
+          cursor="pointer",
+          margin=me.Margin.symmetric(vertical=10),
+        ),
+      ):
+        with me.tooltip(
+          message="Switch to " + ("light mode" if me.theme_brightness() == "dark" else "dark mode")
+        ):
+          me.icon("light_mode" if me.theme_brightness() == "dark" else "dark_mode")
+
     if state.menu_open and state.menu_open_type == "settings":
       with me.box(
         style=me.Style(
           background=_COLOR_MENU,
           padding=me.Padding.all(15),
-          border=me.Border(right=me.BorderSide(width=1, color="#ececec", style="solid")),
+          border=me.Border(
+            right=me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid")
+          ),
           display="flex",
           flex_direction="column",
           height="100vh",
@@ -112,12 +130,12 @@ def main():
           label="Model",
           options=[
             me.SelectOption(
-              label="gemini-1.5-flash-latest",
-              value="gemini-1.5-flash-latest",
+              label="gemini-1.5-flash",
+              value="gemini-1.5-flash",
             ),
             me.SelectOption(
-              label="gemini-1.5-pro-latest",
-              value="gemini-1.5-pro-latest",
+              label="gemini-1.5-pro",
+              value="gemini-1.5-pro",
             ),
           ],
           value=state.model,
@@ -156,8 +174,8 @@ def main():
             me.text(
               state.error,
               style=me.Style(
-                background="#ee675c",
-                color="white",
+                background=me.theme_var("error"),
+                color=me.theme_var("on-error"),
                 font_weight="bold",
                 padding=me.Padding.all(10),
                 margin=me.Margin(bottom=10),
@@ -168,8 +186,8 @@ def main():
             me.text(
               state.error,
               style=me.Style(
-                background="#5bb974",
-                color="white",
+                background=me.theme_var("secondary"),
+                color=me.theme_var("on-secondary"),
                 font_weight="bold",
                 padding=me.Padding.all(10),
                 margin=me.Margin(bottom=10),
@@ -190,7 +208,9 @@ def main():
           with me.box(style=me.Style(display="flex", flex_direction="row")):
             with me.box(
               style=me.Style(
-                border=me.Border(right=me.BorderSide(width=1, color="#aaa", style="solid")),
+                border=me.Border(
+                  right=me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid")
+                ),
                 padding=me.Padding(right=20),
                 margin=me.Margin(right=10),
               )
@@ -239,42 +259,29 @@ def main():
                   me.icon("play_arrow")
         with me.box(
           style=me.Style(
-            background="#fff",
-            # padding=me.Padding.all(15),
-            border=me.Border.all(me.BorderSide(width=1, color="#ececec", style="solid")),
+            background=me.theme_var("surface-container-lowest"),
+            border=me.Border.all(
+              me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid")
+            ),
             overflow_x="scroll",
             overflow_y="scroll",
           )
         ):
-          code_mirror_editor_component(code=state.code_placeholder)
-          """
-          me.native_textarea(
-            value=state.code_placeholder,
-            autosize=True,
-            style=me.Style(
-              overflow_y="hidden",
-              overflow_x="hidden",
-              background="#fff",
-              outline="none",
-              width="100%",
-              border=me.Border.all(me.BorderSide(width=0)),
-            ),
-            on_input=code_input,
-            disabled=state.loading,
+          code_mirror_editor_component(
+            code=state.code_placeholder,
+            theme="default" if me.theme_brightness() == "light" else "tomorrow-night-eighties",
+            on_editor_blur=code_input,
           )
-          """
+
         with me.box():
           me.embed(
             key=str(state.iframe_index),
             src=state.loaded_url or DEFAULT_URL,
             style=me.Style(
-              background="#fdfbff",
+              background=me.theme_var("surface-container-lowest"),
               width="100%",
               height="100%",
-              padding=me.Padding.all(15),
-              border=me.Border.all(
-                me.BorderSide(width=1, color="#ececec", style="solid"),
-              ),
+              border=me.Border.all(me.BorderSide(width=0)),
             ),
           )
 
@@ -282,6 +289,13 @@ def main():
 def toggle_menu(e: me.ClickEvent):
   s = me.state(State)
   s.menu_open = not s.menu_open
+
+
+def on_click_theme_brightness(e: me.ClickEvent):
+  if me.theme_brightness() == "light":
+    me.set_theme_mode("dark")
+  else:
+    me.set_theme_mode("light")
 
 
 def open_settings(e: me.ClickEvent):
@@ -310,9 +324,10 @@ def on_revision_mode(e: me.SlideToggleChangeEvent):
   s.revision_mode = not s.revision_mode
 
 
-def code_input(e: me.InputBlurEvent):
+def code_input(e: mel.WebEvent):
   s = me.state(State)
-  s.code = e.value
+  s.code = e.value["code"]
+  s.code_placeholder = e.value["code"]
 
 
 def load_url(e: me.ClickEvent):
