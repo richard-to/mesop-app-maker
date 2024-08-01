@@ -1,6 +1,7 @@
 import base64
 import os
 import sys
+import traceback
 from typing import Any, Callable
 from absl import flags
 from flask import Flask
@@ -30,8 +31,7 @@ class App:
 def create_app(prod_mode: bool, run_block: Callable[..., None] | None = None) -> App:
   flask_app = configure_flask_app(prod_mode=prod_mode)
 
-  if not prod_mode:
-    enable_debug_mode()
+  enable_debug_mode()
 
   if run_block is not None:
     run_block()
@@ -43,12 +43,19 @@ def create_app(prod_mode: bool, run_block: Callable[..., None] | None = None) ->
     param = request.form.get("code")
     if param is None:
       raise Exception("Missing request parameter")
-    code = base64.urlsafe_b64decode(param)
-    with open("main.py", "w") as file:
-      file.write(code.decode("utf-8"))
-    reset_runtime()
-    execute_module(module_path=make_path_absolute("main.py"), module_name="main")
-    hot_reload_finished()
+    try:
+      code = base64.urlsafe_b64decode(param)
+      with open("main.py", "w") as file:
+        file.write(code.decode("utf-8"))
+      reset_runtime()
+      execute_module(module_path=make_path_absolute("main.py"), module_name="main")
+      hot_reload_finished()
+    except Exception:
+      # Get the current exception information
+      exc_type, exc_value, exc_traceback = sys.exc_info()
+      # Format the traceback as a string
+      tb_string = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+      return tb_string, 500
     return "OK"
 
   return App(flask_app=flask_app)

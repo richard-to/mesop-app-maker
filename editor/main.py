@@ -10,7 +10,7 @@ from web_components import code_mirror_editor_component
 _COLOR_MENU_PANE = me.theme_var("surface-container")
 _COLOR_MENU = me.theme_var("surface-container-low")
 _COLOR_BG = me.theme_var("surface-container-lowest")
-DEFAULT_URL = "http://localhost"
+DEFAULT_URL = "http://localhost:8080/"
 EXAMPLE_PROGRAM = """
 import mesop as me
 
@@ -40,6 +40,8 @@ class State:
   menu_open: bool = True
   menu_open_type: str = "settings"
   revision_mode: bool = False
+  show_error_dialog: bool = False
+  show_status: bool = False
 
 
 @me.page(
@@ -58,6 +60,24 @@ class State:
 )
 def main():
   state = me.state(State)
+
+  mex.snackbar(
+    label=state.info,
+    is_visible=state.show_status,
+    horizontal_position="end",
+    vertical_position="start",
+  )
+
+  with mex.dialog(state.show_error_dialog):
+    me.text("Failed to upload code", type="headline-6")
+    me.markdown(state.error.replace("\n", "  \n"))
+    with mex.dialog_actions():
+      me.button(
+        "Close",
+        key="show_error_dialog",
+        on_click=on_close_dialog,
+      )
+
   with me.box(
     style=me.Style(
       display="grid",
@@ -169,18 +189,6 @@ def main():
           gap=10,
         )
       ):
-        if state.error:
-          with me.box(style=me.Style(grid_column_start=1, grid_column_end=3)):
-            me.text(
-              state.error,
-              style=me.Style(
-                background=me.theme_var("error"),
-                color=me.theme_var("on-error"),
-                font_weight="bold",
-                padding=me.Padding.all(10),
-                margin=me.Margin(bottom=10),
-              ),
-            )
         if state.info:
           with me.box(style=me.Style(grid_column_start=1, grid_column_end=3)):
             me.text(
@@ -351,10 +359,8 @@ def run_code(e: me.ClickEvent):
   if result.status_code == 200:
     yield from load_url(e)
   else:
-    s.error = "Failed to upload code"
-    yield
-    time.sleep(2)
-    s.error = ""
+    s.show_error_dialog = True
+    s.error = result.content.decode("utf-8")
     yield
 
 
@@ -390,7 +396,14 @@ def run_prompt(e: me.ClickEvent):
     if s.revision_mode
     else "Your Mesop app has been generated!"
   )
+  s.show_status = True
   yield
   time.sleep(2)
   s.info = ""
   yield
+
+
+def on_close_dialog(e: me.ClickEvent):
+  """Generic event to close a dialog."""
+  state = me.state(State)
+  setattr(state, e.key, False)
