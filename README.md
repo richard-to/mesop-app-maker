@@ -1,3 +1,3 @@
-# Mesop AI Editor
+# Mesop App Maker
 
-Editor to generate Mesop apps using LLMs
+Editor to generate, edit, and view Mesop apps using LLMs.
