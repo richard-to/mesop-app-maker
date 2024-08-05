@@ -4,48 +4,17 @@ import time
 import requests
 import mesop as me
 import mesop.labs as mel
+
 import components as mex
+import handlers
+import llm
+from constants import DEFAULT_URL, PROMPT_MODE_REVISION, PROMPT_MODE_GENERATE
+from state import State
 from web_components import code_mirror_editor_component
-
-_COLOR_MENU_PANE = me.theme_var("surface-container")
-_COLOR_MENU = me.theme_var("surface-container-low")
-_COLOR_BG = me.theme_var("surface-container-lowest")
-DEFAULT_URL = "http://localhost:8080/"
-EXAMPLE_PROGRAM = """
-import mesop as me
-
-@me.page()
-def app():
-  me.text("Hello World")
-""".strip()
-
-llm = None
-
-
-@me.stateclass
-class State:
-  code_placeholder: str = EXAMPLE_PROGRAM
-  code: str = EXAMPLE_PROGRAM
-  url: str = DEFAULT_URL
-  loaded_url: str
-  iframe_index: int
-  run_result: str
-  loading: bool = False
-  prompt_placeholder: str
-  prompt: str
-  error: str
-  info: str
-  api_key: str
-  model: str = "gemini-1.5-flash"
-  menu_open: bool = True
-  menu_open_type: str = "settings"
-  revision_mode: bool = False
-  show_error_dialog: bool = False
-  show_status: bool = False
 
 
 @me.page(
-  title="Mesop AI Editor",
+  title="Mesop App Maker",
   stylesheets=[
     "https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css",
     "https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/tomorrow-night-eighties.min.css",
@@ -55,28 +24,63 @@ class State:
       "https://cdnjs.cloudflare.com",
       "*.fonts.gstatic.com",
     ],
-    allowed_script_srcs=["https://cdnjs.cloudflare.com", "*.fonts.gstatic.com"],
+    allowed_script_srcs=[
+      "https://cdn.jsdelivr.net",
+      "https://cdnjs.cloudflare.com",
+      "*.fonts.gstatic.com",
+    ],
   ),
 )
 def main():
   state = me.state(State)
 
+  # Status snackbar
   mex.snackbar(
     label=state.info,
-    is_visible=state.show_status,
-    horizontal_position="end",
-    vertical_position="start",
+    is_visible=state.show_status_snackbar,
   )
 
+  # Error dialog
   with mex.dialog(state.show_error_dialog):
     me.text("Failed to upload code", type="headline-6")
-    me.markdown(state.error.replace("\n", "  \n"))
+    with me.box(
+      style=me.Style(max_width=500, max_height=300, overflow_x="scroll", overflow_y="scroll")
+    ):
+      me.code(
+        state.error.replace("\n", "  \n"),
+      )
     with mex.dialog_actions():
       me.button(
         "Close",
         key="show_error_dialog",
-        on_click=on_close_dialog,
+        on_click=handlers.on_hide_component,
       )
+
+  # Generate code panel
+  with mex.panel(
+    is_open=state.show_generate_panel,
+    title="Generate Code",
+    on_click_close=handlers.on_hide_component,
+    key="generate_panel",
+  ):
+    mex.button_toggle(
+      [PROMPT_MODE_GENERATE, PROMPT_MODE_REVISION],
+      selected=state.prompt_mode,
+      on_click=on_click_prompt_mode,
+    )
+    me.textarea(
+      value=state.prompt_placeholder,
+      rows=10,
+      label="What changes do you want to make?"
+      if state.prompt_mode == PROMPT_MODE_REVISION
+      else "What do you want to make?",
+      key="prompt",
+      on_blur=handlers.on_update_input,
+      disabled=state.loading,
+      style=me.Style(width="100%", margin=me.Margin(top=15)),
+    )
+    with me.content_button(on_click=on_run_prompt, type="flat"):
+      me.icon("send")
 
   with me.box(
     style=me.Style(
@@ -87,7 +91,7 @@ def main():
   ):
     with me.box(
       style=me.Style(
-        background=_COLOR_MENU_PANE,
+        background=me.theme_var("surface-container"),
         padding=me.Padding.all(10),
         border=me.Border(
           right=me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid"),
@@ -95,7 +99,7 @@ def main():
       )
     ):
       with me.box(
-        on_click=toggle_menu,
+        on_click=on_toggle_sidebar_menu,
         style=me.Style(
           align_content="center",
           cursor="pointer",
@@ -104,34 +108,25 @@ def main():
       ):
         with me.tooltip(message="Close menu" if state.menu_open else "Open menu"):
           me.icon("menu")
-      with me.box(
-        on_click=open_settings,
-        style=me.Style(
-          align_content="center",
-          cursor="pointer",
-          margin=me.Margin.symmetric(vertical=10),
-        ),
-      ):
-        with me.tooltip(message="Settings"):
-          me.icon("settings")
 
-      with me.box(
+      mex.toolbar_button(
+        icon="settings",
+        tooltip="Settings",
+        alignment="vertical",
+        on_click=on_open_settings,
+      )
+
+      mex.toolbar_button(
+        icon="light_mode" if me.theme_brightness() == "dark" else "dark_mode",
+        tooltip="Switch to " + ("light mode" if me.theme_brightness() == "dark" else "dark mode"),
+        alignment="vertical",
         on_click=on_click_theme_brightness,
-        style=me.Style(
-          align_content="center",
-          cursor="pointer",
-          margin=me.Margin.symmetric(vertical=10),
-        ),
-      ):
-        with me.tooltip(
-          message="Switch to " + ("light mode" if me.theme_brightness() == "dark" else "dark mode")
-        ):
-          me.icon("light_mode" if me.theme_brightness() == "dark" else "dark_mode")
+      )
 
     if state.menu_open and state.menu_open_type == "settings":
       with me.box(
         style=me.Style(
-          background=_COLOR_MENU,
+          background=me.theme_var("surface-container-low"),
           padding=me.Padding.all(15),
           border=me.Border(
             right=me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid")
@@ -145,7 +140,9 @@ def main():
           "Settings",
           style=me.Style(font_weight="bold", margin=me.Margin(bottom=10)),
         )
-        me.input(label="API Key", on_input=api_key_input, disabled=state.loading)
+        me.input(
+          label="API Key", key="api_key", on_blur=handlers.on_update_input, disabled=state.loading
+        )
         me.select(
           label="Model",
           options=[
@@ -158,119 +155,86 @@ def main():
               value="gemini-1.5-pro",
             ),
           ],
+          key="model",
           value=state.model,
-          on_selection_change=on_model_change,
+          on_selection_change=handlers.on_update_selection,
           disabled=state.loading,
         )
         with me.box():
           me.input(
             value=DEFAULT_URL,
             label="URL",
-            on_input=url_input,
+            key="url",
+            on_blur=handlers.on_update_input,
             style=me.Style(width="100%"),
             disabled=state.loading,
           )
+
+    # Main content
     with me.box(
       style=me.Style(
-        background=_COLOR_BG,
+        background=me.theme_var("surface-container-lowest"),
         display="flex",
         flex_direction="column",
         flex_grow=1,
         height="100%",
-        padding=me.Padding.all(15),
       )
     ):
+      # Toolbar
       with me.box(
         style=me.Style(
           display="grid",
           grid_template_columns="1fr 1fr",
-          grid_template_rows="1fr 28fr" if state.error or state.info else "1fr 20fr",
-          height="95vh",
-          gap=10,
+          grid_template_rows="1fr 20fr",
+          height="calc(100vh - 5px)",
         )
       ):
-        if state.info:
-          with me.box(style=me.Style(grid_column_start=1, grid_column_end=3)):
-            me.text(
-              state.error,
-              style=me.Style(
-                background=me.theme_var("secondary"),
-                color=me.theme_var("on-secondary"),
-                font_weight="bold",
-                padding=me.Padding.all(10),
-                margin=me.Margin(bottom=10),
-              ),
-            )
-
-        with me.box(style=me.Style(grid_column_start=1, grid_column_end=3)):
-          me.textarea(
-            value=state.prompt_placeholder,
-            rows=3,
-            label="Revise your Mesop app"
-            if state.revision_mode
-            else "Generate a Mesop app -- The more detailed the better.",
-            on_input=on_prompt_input,
-            disabled=state.loading,
-            style=me.Style(width="100%"),
+        with me.box(
+          style=me.Style(
+            grid_column_start=1,
+            grid_column_end=3,
+            background=me.theme_var("surface-container"),
+            padding=me.Padding.symmetric(vertical=10, horizontal=10),
+            border=me.Border(
+              bottom=me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid"),
+            ),
           )
+        ):
           with me.box(style=me.Style(display="flex", flex_direction="row")):
             with me.box(
               style=me.Style(
-                border=me.Border(
-                  right=me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid")
-                ),
-                padding=me.Padding(right=20),
-                margin=me.Margin(right=10),
+                flex_grow=1,
+                display="flex",
+                flex_direction="row",
               )
             ):
-              mex.button_toggle(["Generate", "Revision"], selected="Generate")
-              # me.slide_toggle(
-              #  label="Revision Mode", checked=state.revision_mode, on_change=on_revision_mode
-              # )
-            with me.box(
-              on_click=run_prompt,
-              style=me.Style(
-                align_content="center",
-                cursor="pointer",
-                padding=me.Padding.symmetric(horizontal=10),
-              ),
-            ):
-              with me.tooltip(
-                message="Revise Mesop app" if state.revision_mode else "Generate Mesop app"
-              ):
-                me.icon("send")
+              mex.toolbar_button(
+                icon="bolt",
+                tooltip="Generate code",
+                key="show_generate_panel",
+                on_click=handlers.on_show_component,
+              )
 
             with me.box(
               style=me.Style(
                 flex_grow=1, display="flex", flex_direction="row", justify_content="end"
               )
             ):
-              with me.box(
-                on_click=load_url,
-                style=me.Style(
-                  align_content="center",
-                  cursor="pointer",
-                  padding=me.Padding.symmetric(horizontal=10),
-                ),
-              ):
-                with me.tooltip(message="Load URL"):
-                  me.icon("refresh")
-              with me.box(
-                on_click=run_code,
-                style=me.Style(
-                  align_content="center",
-                  cursor="pointer",
-                  padding=me.Padding.symmetric(horizontal=10),
-                ),
-              ):
-                with me.tooltip(message="Run code"):
-                  me.icon("play_arrow")
+              mex.toolbar_button(
+                icon="refresh",
+                tooltip="Load URL",
+                on_click=on_load_url,
+              )
+              mex.toolbar_button(
+                icon="play_arrow",
+                tooltip="Run code",
+                on_click=on_run_code,
+              )
+
+        # Code editor pane
         with me.box(
           style=me.Style(
             background=me.theme_var("surface-container-lowest"),
-            border=me.Border.all(
-              me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid")
-            ),
             overflow_x="scroll",
             overflow_y="scroll",
           )
@@ -278,9 +242,10 @@ def main():
           code_mirror_editor_component(
             code=state.code_placeholder,
             theme="default" if me.theme_brightness() == "light" else "tomorrow-night-eighties",
-            on_editor_blur=code_input,
+            on_editor_blur=on_code_input,
           )
 
+        # App preview pane
         with me.box():
           me.embed(
             key=str(state.iframe_index),
@@ -294,116 +259,101 @@ def main():
           )
 
 
-def toggle_menu(e: me.ClickEvent):
-  s = me.state(State)
-  s.menu_open = not s.menu_open
+def on_toggle_sidebar_menu(e: me.ClickEvent):
+  """Toggles sidebar menu expansion."""
+  state = me.state(State)
+  state.menu_open = not state.menu_open
 
 
 def on_click_theme_brightness(e: me.ClickEvent):
+  """Toggles dark mode."""
   if me.theme_brightness() == "light":
     me.set_theme_mode("dark")
   else:
     me.set_theme_mode("light")
 
 
-def open_settings(e: me.ClickEvent):
-  s = me.state(State)
-  s.menu_open = True
-  s.menu_open_type = "settings"
+def on_open_settings(e: me.ClickEvent):
+  """Shows settings menu."""
+  state = me.state(State)
+  state.menu_open = True
+  state.menu_open_type = "settings"
 
 
-def api_key_input(e: me.InputBlurEvent):
-  s = me.state(State)
-  s.api_key = e.value
-
-
-def on_model_change(e: me.SelectSelectionChangeEvent):
-  s = me.state(State)
-  s.model = e.value
-
-
-def url_input(e: me.InputBlurEvent):
-  s = me.state(State)
-  s.url = e.value
-
-
-def on_revision_mode(e: me.SlideToggleChangeEvent):
-  s = me.state(State)
-  s.revision_mode = not s.revision_mode
-
-
-def code_input(e: mel.WebEvent):
-  s = me.state(State)
-  s.code = e.value["code"]
-  s.code_placeholder = e.value["code"]
-
-
-def load_url(e: me.ClickEvent):
-  s = me.state(State)
-  s.code_placeholder = s.code
-  yield
-  s.loaded_url = s.url
-  s.iframe_index += 1
-  yield
-
-
-def run_code(e: me.ClickEvent):
-  s = me.state(State)
-  s.code_placeholder = s.code
-  code = s.code.replace(
-    "@me.page()",
-    '@me.page(security_policy=me.SecurityPolicy(allowed_iframe_parents=["localhost:*"]))',
+def on_click_prompt_mode(e: me.ClickEvent):
+  """Toggles prompt modes - generate / revision."""
+  state = me.state(State)
+  state.prompt_mode = (
+    PROMPT_MODE_REVISION if state.prompt_mode == PROMPT_MODE_GENERATE else PROMPT_MODE_GENERATE
   )
+
+
+def on_code_input(e: mel.WebEvent):
+  """Captures code input into state on blur."""
+  state = me.state(State)
+  state.code = e.value["code"]
+  state.code_placeholder = e.value["code"]
+
+
+def on_load_url(e: me.ClickEvent):
+  """Loads the Mesop app page into the iframe."""
+  state = me.state(State)
+  state.code_placeholder = state.code
   yield
-  result = requests.post(s.url + "exec", data={"code": base64.b64encode(code.encode("utf-8"))})
+  state.loaded_url = state.url + state.url_path
+  state.iframe_index += 1
+  yield
+
+
+def on_run_code(e: me.ClickEvent):
+  """Tries to upload code to the Mesop app runner."""
+  state = me.state(State)
+  state.code_placeholder = state.code
+  yield
+  result = requests.post(
+    state.url + "/exec", data={"code": base64.b64encode(state.code.encode("utf-8"))}
+  )
   if result.status_code == 200:
-    yield from load_url(e)
+    state.url_path = result.content.decode("utf-8")
+    yield from on_load_url(e)
   else:
-    s.show_error_dialog = True
-    s.error = result.content.decode("utf-8")
+    state.show_error_dialog = True
+    state.error = result.content.decode("utf-8")
     yield
 
 
-def on_prompt_input(e: me.InputEvent):
-  s = me.state(State)
-  s.prompt = e.value
+def on_run_prompt(e: me.ClickEvent):
+  """Generate code from prompt."""
+  state = me.state(State)
 
-
-def run_prompt(e: me.ClickEvent):
-  s = me.state(State)
-
-  s.prompt_placeholder = s.prompt
+  state.prompt_placeholder = state.prompt
   yield
   time.sleep(0.4)
-  s.prompt_placeholder = ""
+  state.prompt_placeholder = ""
   yield
 
-  s.loading = True
+  state.loading = True
   yield
 
-  if s.revision_mode:
-    s.code = llm.adjust_mesop_app(s.code, s.prompt, model_name=s.model, api_key=s.api_key)
+  if state.prompt_mode == PROMPT_MODE_REVISION:
+    state.code = llm.adjust_mesop_app(
+      state.code, state.prompt, model_name=state.model, api_key=state.api_key
+    )
   else:
-    s.code = llm.build_mesop_app(s.prompt, model_name=s.model, api_key=s.api_key)
+    state.code = llm.generate_mesop_app(state.prompt, model_name=state.model, api_key=state.api_key)
 
-  s.code = s.code.strip().removeprefix("```python").removesuffix("```")
-  s.code_placeholder = s.code
-  s.revision_mode = True
-  yield
-
-  s.info = (
+  state.code = state.code.strip().removeprefix("```python").removesuffix("```")
+  state.code_placeholder = state.code
+  state.info = (
     "Your code adjustment has been applied!"
-    if s.revision_mode
+    if state.prompt_mode == PROMPT_MODE_REVISION
     else "Your Mesop app has been generated!"
   )
-  s.show_status = True
+  state.prompt_mode = PROMPT_MODE_REVISION
+  yield
+
+  state.show_status_snackbar = True
   yield
   time.sleep(2)
-  s.info = ""
+  state.info = ""
   yield
-
-
-def on_close_dialog(e: me.ClickEvent):
-  """Generic event to close a dialog."""
-  state = me.state(State)
-  setattr(state, e.key, False)

@@ -6,6 +6,29 @@ from components import helpers
 
 
 @me.component()
+def toolbar_button(
+  *,
+  icon: str,
+  tooltip: str,
+  alignment: Literal["horizontal", "vertical"] = "horizontal",
+  on_click: Callable[[me.ClickEvent], Any] | None = None,
+  key: str = "",
+):
+  padding = (
+    me.Padding.symmetric(horizontal=10)
+    if alignment == "horizontal"
+    else me.Padding.symmetric(vertical=10)
+  )
+  with me.box(
+    on_click=on_click,
+    key=key,
+    style=me.Style(align_content="center", cursor="pointer", padding=padding),
+  ):
+    with me.tooltip(message=tooltip):
+      me.icon(icon)
+
+
+@me.component()
 def button(
   label: str | None = None,
   *,
