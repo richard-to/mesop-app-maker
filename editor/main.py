@@ -8,7 +8,7 @@ import mesop.labs as mel
 import components as mex
 import handlers
 import llm
-from constants import DEFAULT_URL, PROMPT_MODE_REVISION, PROMPT_MODE_GENERATE
+from constants import DEFAULT_URL, PROMPT_MODE_REVISE, PROMPT_MODE_GENERATE
 from state import State
 from web_components import code_mirror_editor_component
 
@@ -64,7 +64,7 @@ def main():
     key="generate_panel",
   ):
     mex.button_toggle(
-      [PROMPT_MODE_GENERATE, PROMPT_MODE_REVISION],
+      [PROMPT_MODE_GENERATE, PROMPT_MODE_REVISE],
       selected=state.prompt_mode,
       on_click=on_click_prompt_mode,
     )
@@ -72,7 +72,7 @@ def main():
       value=state.prompt_placeholder,
       rows=10,
       label="What changes do you want to make?"
-      if state.prompt_mode == PROMPT_MODE_REVISION
+      if state.prompt_mode == PROMPT_MODE_REVISE
       else "What do you want to make?",
       key="prompt",
       on_blur=handlers.on_update_input,
@@ -81,6 +81,25 @@ def main():
     )
     with me.content_button(on_click=on_run_prompt, type="flat", disabled=state.loading):
       me.icon("send")
+
+    with me.box(style=me.Style(margin=me.Margin(top=30))):
+      for prompt_history in reversed(state.prompt_history):
+        with me.box(
+          key=f"prompt-{prompt_history['index']}",
+          on_click=on_click_history_prompt,
+          style=me.Style(
+            background=me.theme_var("surface-container"),
+            border=me.Border.all(
+              me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid")
+            ),
+            border_radius=5,
+            cursor="pointer",
+            margin=me.Margin.symmetric(vertical=10),
+            padding=me.Padding.all(10),
+            text_overflow="ellipsis",
+          ),
+        ):
+          me.text(_truncate_text(prompt_history["prompt"]))
 
   with me.box(
     style=me.Style(
@@ -284,7 +303,7 @@ def on_click_prompt_mode(e: me.ClickEvent):
   """Toggles prompt modes - generate / revision."""
   state = me.state(State)
   state.prompt_mode = (
-    PROMPT_MODE_REVISION if state.prompt_mode == PROMPT_MODE_GENERATE else PROMPT_MODE_GENERATE
+    PROMPT_MODE_REVISE if state.prompt_mode == PROMPT_MODE_GENERATE else PROMPT_MODE_GENERATE
   )
 
 
@@ -335,7 +354,7 @@ def on_run_prompt(e: me.ClickEvent):
   state.loading = True
   yield
 
-  if state.prompt_mode == PROMPT_MODE_REVISION:
+  if state.prompt_mode == PROMPT_MODE_REVISE:
     state.code = llm.adjust_mesop_app(
       state.code, state.prompt, model_name=state.model, api_key=state.api_key
     )
@@ -346,10 +365,14 @@ def on_run_prompt(e: me.ClickEvent):
   state.code_placeholder = state.code
   state.info = (
     "Your code adjustment has been applied!"
-    if state.prompt_mode == PROMPT_MODE_REVISION
+    if state.prompt_mode == PROMPT_MODE_REVISE
     else "Your Mesop app has been generated!"
   )
-  state.prompt_mode = PROMPT_MODE_REVISION
+  if state.prompt_mode == PROMPT_MODE_GENERATE:
+    state.prompt_history.append(
+      dict(prompt=state.prompt, code=state.code, index=len(state.prompt_history))
+    )
+  state.prompt_mode = PROMPT_MODE_REVISE
   state.loading = False
   yield
 
@@ -359,3 +382,22 @@ def on_run_prompt(e: me.ClickEvent):
   state.info = ""
   state.show_status_snackbar = False
   yield
+
+
+def on_click_history_prompt(e: me.ClickEvent):
+  """Set previous prompt/code"""
+  state = me.state(State)
+  index = int(e.key.replace("prompt-", ""))
+  prompt_history = state.prompt_history[index]
+  state.prompt_placeholder = prompt_history["prompt"]
+  state.prompt = state.prompt_placeholder
+  state.code_placeholder = prompt_history["code"]
+  state.code = state.code_placeholder
+
+
+def _truncate_text(text, char_limit=100):
+  """Truncates text that is too long."""
+  if len(text) <= char_limit:
+    return text
+  truncated_text = text[:char_limit].rsplit(" ", 1)[0]
+  return truncated_text.rstrip(".,!?;:") + "..."

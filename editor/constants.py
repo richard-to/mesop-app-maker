@@ -7,4 +7,4 @@ def app():
   me.text("Hello World")
 """.strip()
 PROMPT_MODE_GENERATE = "Generate"
-PROMPT_MODE_REVISION = "Revision"
+PROMPT_MODE_REVISE = "Revise"

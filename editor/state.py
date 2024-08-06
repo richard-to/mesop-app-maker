@@ -1,5 +1,6 @@
-import constants as c
 import mesop as me
+
+import constants as c
 
 
 @me.stateclass
@@ -18,7 +19,7 @@ class State:
   prompt_mode: str = "Generate"
   prompt_placeholder: str
   prompt: str
-
+  prompt_history: list[dict]  # Format: {"prompt", "code", "index"}
   # Code editor
   code_placeholder: str = c.EXAMPLE_PROGRAM
   code: str = c.EXAMPLE_PROGRAM
