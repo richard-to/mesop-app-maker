@@ -19,7 +19,10 @@ class State:
   prompt_mode: str = "Generate"
   prompt_placeholder: str
   prompt: str
-  prompt_history: list[dict]  # Format: {"prompt", "code", "index"}
+
+  # Prompt history panel
+  prompt_history: list[dict]  # Format: {"prompt", "code", "index", "mode"}
+
   # Code editor
   code_placeholder: str = c.EXAMPLE_PROGRAM
   code: str = c.EXAMPLE_PROGRAM
@@ -37,4 +40,5 @@ class State:
   # Sub-screens
   show_error_dialog: bool = False
   show_generate_panel: bool = False
+  show_prompt_history_panel: bool = False
   show_status_snackbar: bool = False

@@ -82,24 +82,31 @@ def main():
     with me.content_button(on_click=on_run_prompt, type="flat", disabled=state.loading):
       me.icon("send")
 
-    with me.box(style=me.Style(margin=me.Margin(top=30))):
-      for prompt_history in reversed(state.prompt_history):
-        with me.box(
-          key=f"prompt-{prompt_history['index']}",
-          on_click=on_click_history_prompt,
-          style=me.Style(
-            background=me.theme_var("surface-container"),
-            border=me.Border.all(
-              me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid")
-            ),
-            border_radius=5,
-            cursor="pointer",
-            margin=me.Margin.symmetric(vertical=10),
-            padding=me.Padding.all(10),
-            text_overflow="ellipsis",
+  # Prompt history panel
+  with mex.panel(
+    is_open=state.show_prompt_history_panel,
+    title="Prompt History",
+    on_click_close=handlers.on_hide_component,
+    key="prompt_history_panel",
+  ):
+    for prompt_history in reversed(state.prompt_history):
+      with me.box(
+        key=f"prompt-{prompt_history['index']}",
+        on_click=on_click_history_prompt,
+        style=me.Style(
+          background=me.theme_var("surface-container"),
+          border=me.Border.all(
+            me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid")
           ),
-        ):
-          me.text(_truncate_text(prompt_history["prompt"]))
+          border_radius=5,
+          cursor="pointer",
+          margin=me.Margin.symmetric(vertical=10),
+          padding=me.Padding.all(10),
+          text_overflow="ellipsis",
+        ),
+      ):
+        me.text(prompt_history["mode"], style=me.Style(font_weight="bold", font_size=13))
+        me.text(_truncate_text(prompt_history["prompt"]))
 
   with me.box(
     style=me.Style(
@@ -231,8 +238,16 @@ def main():
                 icon="bolt",
                 tooltip="Generate code",
                 key="show_generate_panel",
-                on_click=handlers.on_show_component,
+                on_click=on_show_generate_panel,
               )
+
+              if state.prompt_history:
+                mex.toolbar_button(
+                  icon="history",
+                  tooltip="Prompt history",
+                  key="show_prompt_history_panel",
+                  on_click=handlers.on_show_component,
+                )
 
             with me.box(
               style=me.Style(
@@ -368,10 +383,12 @@ def on_run_prompt(e: me.ClickEvent):
     if state.prompt_mode == PROMPT_MODE_REVISE
     else "Your Mesop app has been generated!"
   )
-  if state.prompt_mode == PROMPT_MODE_GENERATE:
-    state.prompt_history.append(
-      dict(prompt=state.prompt, code=state.code, index=len(state.prompt_history))
+  state.prompt_history.append(
+    dict(
+      prompt=state.prompt, code=state.code, index=len(state.prompt_history), mode=state.prompt_mode
     )
+  )
+
   state.prompt_mode = PROMPT_MODE_REVISE
   state.loading = False
   yield
@@ -384,6 +401,15 @@ def on_run_prompt(e: me.ClickEvent):
   yield
 
 
+def on_show_generate_panel(e: me.ClickEvent):
+  """Show generate panel and focus on prompt text area"""
+  state = me.state(State)
+  state.show_generate_panel = True
+  yield
+  me.focus_component(key="prompt")
+  yield
+
+
 def on_click_history_prompt(e: me.ClickEvent):
   """Set previous prompt/code"""
   state = me.state(State)
@@ -393,6 +419,12 @@ def on_click_history_prompt(e: me.ClickEvent):
   state.prompt = state.prompt_placeholder
   state.code_placeholder = prompt_history["code"]
   state.code = state.code_placeholder
+  state.prompt_mode = prompt_history["mode"]
+  state.show_prompt_history_panel = False
+  state.show_generate_panel = True
+  yield
+  me.focus_component(key="prompt")
+  yield
 
 
 def _truncate_text(text, char_limit=100):
