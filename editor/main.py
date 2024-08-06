@@ -79,7 +79,7 @@ def main():
       disabled=state.loading,
       style=me.Style(width="100%", margin=me.Margin(top=15)),
     )
-    with me.content_button(on_click=on_run_prompt, type="flat"):
+    with me.content_button(on_click=on_run_prompt, type="flat", disabled=state.loading):
       me.icon("send")
 
   with me.box(
@@ -350,10 +350,12 @@ def on_run_prompt(e: me.ClickEvent):
     else "Your Mesop app has been generated!"
   )
   state.prompt_mode = PROMPT_MODE_REVISION
+  state.loading = False
   yield
 
   state.show_status_snackbar = True
   yield
   time.sleep(2)
   state.info = ""
+  state.show_status_snackbar = False
   yield
