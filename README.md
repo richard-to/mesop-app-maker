@@ -31,3 +31,13 @@ mesop main.py
 ```
 
 You will need a Gemini API key to use the Mesop app generate functionality.
+
+## Screenshots
+
+### Generate app
+
+<img width="1312" alt="Screenshot 2024-08-05 at 5 29 44 PM" src="https://github.com/user-attachments/assets/d96afd8a-3c09-4d12-8749-00deddc7f8f5">
+
+### Preview app
+
+<img width="1312" alt="Screenshot 2024-08-05 at 5 31 35 PM" src="https://github.com/user-attachments/assets/1a826d44-c87b-4c79-aeaf-29bc8da3b1c0">
