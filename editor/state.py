@@ -42,3 +42,7 @@ class State:
   show_generate_panel: bool = False
   show_prompt_history_panel: bool = False
   show_status_snackbar: bool = False
+
+  # Async action
+  async_action_name: str
+  async_action_duration: int = 3

@@ -14,7 +14,6 @@ It can be started using these commands:
 
 ```shell
 cd runner
-pip install -r requirements.txt  # First time only
 docker stop mesop-app;
 docker rm mesop-app;
 docker build -t mesop-app . && docker run --name mesop-app -d -p 8080:8080 mesop-app;
@@ -24,7 +23,7 @@ docker build -t mesop-app . && docker run --name mesop-app -d -p 8080:8080 mesop
 
 The editor is the Mesop app that allows you to generate, edit, and view Mesop apps.
 
-```
+```shell
 cd editor
 pip install -r requirements.txt  # First time only
 mesop main.py

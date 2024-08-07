@@ -11,6 +11,8 @@ import llm
 from constants import DEFAULT_URL, PROMPT_MODE_REVISE, PROMPT_MODE_GENERATE
 from state import State
 from web_components import code_mirror_editor_component
+from web_components import AsyncAction
+from web_components import async_action_component
 
 
 @me.page(
@@ -33,6 +35,13 @@ from web_components import code_mirror_editor_component
 )
 def main():
   state = me.state(State)
+
+  action = (
+    AsyncAction(value=state.async_action_name, duration_seconds=state.async_action_duration)
+    if state.async_action_name
+    else None
+  )
+  async_action_component(action=action, on_finished=on_async_action_finished)
 
   # Status snackbar
   mex.snackbar(
@@ -394,10 +403,7 @@ def on_run_prompt(e: me.ClickEvent):
   yield
 
   state.show_status_snackbar = True
-  yield
-  time.sleep(2)
-  state.info = ""
-  state.show_status_snackbar = False
+  state.async_action_name = "hide_status_snackbar"
   yield
 
 
@@ -425,6 +431,13 @@ def on_click_history_prompt(e: me.ClickEvent):
   yield
   me.focus_component(key="prompt")
   yield
+
+
+def on_async_action_finished(e: mel.WebEvent):
+  state = me.state(State)
+  state.async_action_name = ""
+  state.info = ""
+  state.show_status_snackbar = False
 
 
 def _truncate_text(text, char_limit=100):

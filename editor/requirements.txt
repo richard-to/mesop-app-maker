@@ -1,3 +1,3 @@
-mesop==0.11.0
+mesop==0.11.1
 requests
 google_generativeai

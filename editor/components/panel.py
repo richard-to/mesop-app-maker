@@ -12,6 +12,7 @@ def panel(is_open: bool, title: str, on_click_close: Callable | None = None, key
       height="100%",
       overflow_x="auto",
       overflow_y="auto",
+      pointer_events="none",
       position="fixed",
       width="100%",
       z_index=1000,
@@ -35,6 +36,7 @@ def panel(is_open: bool, title: str, on_click_close: Callable | None = None, key
           ),
           margin=me.Margin(top=10, right=5),
           padding=me.Padding.all(20),
+          pointer_events="auto",
           height="100%",
           width="30%",
         )
