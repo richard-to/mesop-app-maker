@@ -102,13 +102,13 @@ def create_app(prod_mode: bool, run_block: Callable[..., None] | None = None) ->
       # we need to trigger another hot reload without the bad code.
       if registered_module in registered_modules:
         registered_modules.remove(registered_module)
-        reset_runtime()
-        for registered_module in registered_modules:
-          execute_module(
-            module_path=make_path_absolute(f"{registered_module.name}.py"),
-            module_name=registered_module.name,
-          )
-        hot_reload_finished()
+      reset_runtime()
+      for registered_module in registered_modules:
+        execute_module(
+          module_path=make_path_absolute(f"{registered_module.name}.py"),
+          module_name=registered_module.name,
+        )
+      hot_reload_finished()
       # Get the current exception information
       exc_type, exc_value, exc_traceback = sys.exc_info()
       # Format the traceback as a string
