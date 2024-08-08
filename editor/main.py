@@ -133,28 +133,21 @@ def main():
         ),
       )
     ):
-      with me.box(
+      mex.toolbar_button(
+        icon="menu",
+        tooltip="Close menu" if state.menu_open else "Open menu",
         on_click=on_toggle_sidebar_menu,
-        style=me.Style(
-          align_content="center",
-          cursor="pointer",
-          margin=me.Margin(bottom=30),
-        ),
-      ):
-        with me.tooltip(message="Close menu" if state.menu_open else "Open menu"):
-          me.icon("menu")
+      )
 
       mex.toolbar_button(
         icon="settings",
         tooltip="Settings",
-        alignment="vertical",
         on_click=on_open_settings,
       )
 
       mex.toolbar_button(
         icon="light_mode" if me.theme_brightness() == "dark" else "dark_mode",
         tooltip="Switch to " + ("light mode" if me.theme_brightness() == "dark" else "dark mode"),
-        alignment="vertical",
         on_click=on_click_theme_brightness,
       )
 
@@ -229,7 +222,7 @@ def main():
             grid_column_start=1,
             grid_column_end=3,
             background=me.theme_var("surface-container"),
-            padding=me.Padding.symmetric(vertical=10, horizontal=10),
+            padding=me.Padding.all(5),
             border=me.Border(
               bottom=me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid"),
             ),
@@ -255,7 +248,7 @@ def main():
                   icon="history",
                   tooltip="Prompt history",
                   key="show_prompt_history_panel",
-                  on_click=handlers.on_show_component,
+                  on_click=on_show_prompt_history_panel,
                 )
 
             with me.box(
@@ -407,10 +400,18 @@ def on_run_prompt(e: me.ClickEvent):
   yield
 
 
+def on_show_prompt_history_panel(e: me.ClickEvent):
+  """Show prompt history panel"""
+  state = me.state(State)
+  state.show_prompt_history_panel = True
+  state.show_generate_panel = False
+
+
 def on_show_generate_panel(e: me.ClickEvent):
   """Show generate panel and focus on prompt text area"""
   state = me.state(State)
   state.show_generate_panel = True
+  state.show_prompt_history_panel = False
   yield
   me.focus_component(key="prompt")
   yield
