@@ -27,6 +27,7 @@ from web_components import async_action_component
     "https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/tomorrow-night-eighties.min.css",
   ],
   security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://huggingface.co"],
     allowed_connect_srcs=[
       "https://cdnjs.cloudflare.com",
       "*.fonts.gstatic.com",
