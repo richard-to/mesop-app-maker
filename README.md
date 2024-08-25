@@ -67,3 +67,26 @@ docker build -t mesop-app-runner . && docker run --name mesop-app-runner \
 ### Preview app
 
 <img width="1312" alt="Screenshot 2024-08-05 at 5 31 35 PM" src="https://github.com/user-attachments/assets/1a826d44-c87b-4c79-aeaf-29bc8da3b1c0">
+
+### Hugging Face
+
+If you want to test out the [Mesop App Maker](https://huggingface.co/spaces/richard-to/mesop-app-maker) on Hugging Face,
+you will need to create your own instance of the [Mesop App Runner](https://huggingface.co/spaces/richard-to/mesop-app-runner).
+
+You can do this by duplicating the [Mesop App Runner](https://huggingface.co/spaces/richard-to/mesop-app-runner) on Hugging Face.
+
+This can be done on the [Mesop App Runner](https://huggingface.co/spaces/richard-to/mesop-app-runner) space like this:
+
+![duplicate-hf-space](https://github.com/user-attachments/assets/1304dde5-3d4b-4228-8bbb-b63d8630ec0b)
+
+Make sure to specify a `MESOP_APP_RUNNER_TOKEN`. This can be any random characters. It is needed to ensure that only people
+with the token can run Mesop code on your runner instance.
+
+<img width="889" alt="Screenshot 2024-08-25 at 2 49 36 PM" src="https://github.com/user-attachments/assets/4c6ce056-0898-4c10-8e6c-36d268a63108">
+
+The URL will be something like `https://<username>-<app-name>.hf.space`.
+
+You will need to provide this URL as the Runner URL on [Mesop App Maker](https://huggingface.co/spaces/richard-to/mesop-app-maker).
+You will also need to provide the runner token associated with your instance on [Mesop App Maker](https://huggingface.co/spaces/richard-to/mesop-app-maker).
+
+<img width="1310" alt="Screenshot 2024-08-25 at 4 22 32 PM" src="https://github.com/user-attachments/assets/efa1ce04-4770-4927-89ab-6a65ed62b014">
