@@ -1,0 +1,9 @@
+# Mesop
+.env
+
+# Python
+__pycache__
+.pytest_cache
+
+# System
+.DS_Store

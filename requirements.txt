@@ -1,0 +1,4 @@
+mesop==0.12.2
+requests
+google_generativeai
+gunicorn
