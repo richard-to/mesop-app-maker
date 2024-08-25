@@ -33,7 +33,7 @@ local development where you don't want to keep entering your API Key and runner 
 after every reload.
 
 ```
-GEMINI_API_KEY=you-app-key
+GEMINI_API_KEY=you-gemini-api-key
 MESOP_APP_MAKER_RUNNER_URL=https://example.com
 MESOP_APP_MAKER_RUNNER_TOKEN=your-secret-token
 MESOP_APP_MAKER_SHOW_HELP=0
