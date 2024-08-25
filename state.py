@@ -1,3 +1,5 @@
+import os
+
 import mesop as me
 
 import constants as c
@@ -11,9 +13,10 @@ class State:
   info: str
 
   # Settings
-  api_key: str
+  api_key: str = os.getenv("GEMINI_API_KEY", "")
   model: str = "gemini-1.5-flash"
-  url: str = c.DEFAULT_URL
+  runner_url: str = os.getenv("MESOP_APP_MAKER_RUNNER_URL", c.DEFAULT_URL)
+  runner_token: str = os.getenv("MESOP_APP_MAKER_RUNNER_TOKEN", "")
 
   # Generate prompt panel
   prompt_mode: str = "Generate"
@@ -29,7 +32,7 @@ class State:
 
   # App preview
   run_result: str
-  url_path: str = "/"
+  runner_url_path: str = "/"
   loaded_url: str
   iframe_index: int
 
@@ -42,6 +45,7 @@ class State:
   show_generate_panel: bool = False
   show_prompt_history_panel: bool = False
   show_status_snackbar: bool = False
+  show_help_dialog: bool = bool(int(os.getenv("MESOP_APP_MAKER_SHOW_HELP", "0")))
 
   # Async action
   async_action_name: str

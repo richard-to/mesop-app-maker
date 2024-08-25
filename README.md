@@ -26,6 +26,19 @@ pip install -r requirements.txt
 mesop main.py
 ```
 
+#### Environment variables
+
+The editor supports the following environment variables. These are mainly useful for
+local development where you don't want to keep entering your API Key and runner token
+after every reload.
+
+```
+GEMINI_API_KEY=you-app-key
+MESOP_APP_MAKER_RUNNER_URL=https://example.com
+MESOP_APP_MAKER_RUNNER_TOKEN=your-secret-token
+MESOP_APP_MAKER_SHOW_HELP=0
+```
+
 You will need a Gemini API key to use the Mesop app generate functionality.
 
 ### The runner

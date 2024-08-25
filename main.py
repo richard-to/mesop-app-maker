@@ -8,7 +8,12 @@ import mesop.labs as mel
 import components as mex
 import handlers
 import llm
-from constants import DEFAULT_URL, PROMPT_MODE_REVISE, PROMPT_MODE_GENERATE
+from constants import (
+  DEFAULT_URL,
+  PROMPT_MODE_REVISE,
+  PROMPT_MODE_GENERATE,
+  HELP_TEXT,
+)
 from state import State
 from web_components import code_mirror_editor_component
 from web_components import AsyncAction
@@ -62,6 +67,17 @@ def main():
       me.button(
         "Close",
         key="show_error_dialog",
+        on_click=handlers.on_hide_component,
+      )
+
+  # Help dialog
+  with mex.dialog(state.show_help_dialog):
+    me.text("Usage Instructions", type="headline-6")
+    me.markdown(HELP_TEXT)
+    with mex.dialog_actions():
+      me.button(
+        "Close",
+        key="show_help_dialog",
         on_click=handlers.on_hide_component,
       )
 
@@ -151,6 +167,13 @@ def main():
         on_click=on_click_theme_brightness,
       )
 
+      mex.toolbar_button(
+        icon="help",
+        tooltip="Help",
+        key="show_help_dialog",
+        on_click=handlers.on_show_component,
+      )
+
     if state.menu_open and state.menu_open_type == "settings":
       with me.box(
         style=me.Style(
@@ -169,7 +192,12 @@ def main():
           style=me.Style(font_weight="bold", margin=me.Margin(bottom=10)),
         )
         me.input(
-          label="API Key", key="api_key", on_blur=handlers.on_update_input, disabled=state.loading
+          type="password",
+          label="Gemini API Key",
+          key="api_key",
+          value=state.api_key,
+          on_blur=handlers.on_update_input,
+          disabled=state.loading,
         )
         me.select(
           label="Model",
@@ -190,9 +218,19 @@ def main():
         )
         with me.box():
           me.input(
-            value=DEFAULT_URL,
-            label="URL",
-            key="url",
+            value=state.runner_url,
+            label="Runner URL",
+            key="runner_url",
+            on_blur=handlers.on_update_input,
+            style=me.Style(width="100%"),
+            disabled=state.loading,
+          )
+        with me.box():
+          me.input(
+            type="password",
+            value=state.runner_token,
+            label="Runner Token",
+            key="runner_token",
             on_blur=handlers.on_update_input,
             style=me.Style(width="100%"),
             disabled=state.loading,
@@ -336,21 +374,22 @@ def on_load_url(e: me.ClickEvent):
   state = me.state(State)
   state.code_placeholder = state.code
   yield
-  state.loaded_url = state.url + state.url_path
+  state.loaded_url = state.runner_url.removesuffix("/") + state.runner_url_path
   state.iframe_index += 1
   yield
 
 
 def on_run_code(e: me.ClickEvent):
-  """Tries to upload code to the Mesop app runner."""
+  """Tries to upload code to the Mesop app Runner."""
   state = me.state(State)
   state.code_placeholder = state.code
   yield
   result = requests.post(
-    state.url + "/exec", data={"code": base64.b64encode(state.code.encode("utf-8"))}
+    state.runner_url.removesuffix("/") + "/exec",
+    data={"token": state.runner_token, "code": base64.b64encode(state.code.encode("utf-8"))},
   )
   if result.status_code == 200:
-    state.url_path = result.content.decode("utf-8")
+    state.runner_url_path = result.content.decode("utf-8")
     yield from on_load_url(e)
   else:
     state.show_error_dialog = True

@@ -13,12 +13,12 @@ def toolbar_button(
   on_click: Callable[[me.ClickEvent], Any] | None = None,
   key: str = "",
 ):
-  with me.content_button(
-    on_click=on_click,
-    key=key,
-    type="icon",
-  ):
-    with me.tooltip(message=tooltip):
+  with me.tooltip(message=tooltip):
+    with me.content_button(
+      on_click=on_click,
+      key=key,
+      type="icon",
+    ):
       me.icon(icon)
 
 
