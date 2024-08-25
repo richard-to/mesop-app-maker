@@ -1,0 +1,1180 @@
+This section provides examples of elements that can be used for composing chat UIs in Mesop. Each example is wrapped in <example> tags.
+
+<example>
+# This file provides examples for creating sidebars.
+
+import mesop as me
+
+
+# This is an example of a sidebar on the left. It is compact and uses icons.
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/sidebar-example-1",
+)
+def sidebar_example_1():
+  # Create a two column grid. Since the sidebar is the on left, we make that column
+  # very thin using a 1fr to 50fr ratio.
+  with me.box(
+    style=me.Style(
+      display="grid", grid_template_columns="1fr 50fr", height="100vh"
+    )
+  ):
+    # This block is the code for the sidebar
+    with me.box(
+      style=me.Style(
+        background=me.theme_var("surface-container"),
+        border=me.Border.symmetric(
+          horizontal=me.BorderSide(
+            width=1, style="solid", color=me.theme_var("outline-variant")
+          )
+        ),
+        height="100%",
+      )
+    ):
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        style=me.Style(
+          border=me.Border(
+            bottom=me.BorderSide(
+              width=1, color=me.theme_var("outline-variant"), style="solid"
+            )
+          ),
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        with me.tooltip(message="Home tooltip"):
+          me.icon("home")
+
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        style=me.Style(
+          border=me.Border(
+            bottom=me.BorderSide(
+              width=1, color=me.theme_var("outline-variant"), style="solid"
+            )
+          ),
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        with me.tooltip(message="Search tooltip"):
+          me.icon("search")
+
+    # This block is for the main content to be added.
+    with me.box(style=me.Style(margin=me.Margin.all(15))):
+      me.text("Main body content goes here")
+
+
+# This is an example of a sidebar on the right. This sidebar is less compact and uses
+# icon and text labels.
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/sidebar-example-2",
+)
+def sidebar_example_2():
+  # Create a two column grid. Since the sidebar is the on right, we make the right column
+  # very thin using a 50fr to 1fr ratio.
+  with me.box(
+    style=me.Style(
+      display="grid", grid_template_columns="50fr 1fr", height="100vh"
+    )
+  ):
+    # This block is for the main content to be added.
+    with me.box(style=me.Style(margin=me.Margin.all(15))):
+      me.text("Main body content goes here")
+
+    # This block is the code for the sidebar
+    with me.box(
+      style=me.Style(
+        background=me.theme_var("surface-container"),
+        border=me.Border.symmetric(
+          horizontal=me.BorderSide(
+            width=1, style="solid", color=me.theme_var("outline-variant")
+          )
+        ),
+        height="100%",
+      )
+    ):
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        style=me.Style(
+          border=me.Border(
+            bottom=me.BorderSide(
+              width=1, color=me.theme_var("outline-variant"), style="solid"
+            )
+          ),
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        with me.box(
+          style=me.Style(
+            display="flex",
+            align_items="center",
+            gap=5,
+          )
+        ):
+          me.icon("home")
+          me.text("Home")
+
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        style=me.Style(
+          border=me.Border(
+            bottom=me.BorderSide(
+              width=1, color=me.theme_var("outline-variant"), style="solid"
+            )
+          ),
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        with me.box(
+          style=me.Style(
+            display="flex",
+            align_items="center",
+            gap=5,
+          )
+        ):
+          me.icon("search")
+          me.text("Search")
+
+
+# This is an example of a sidebar that expands and collapses.
+
+
+@me.stateclass
+class State:
+  # Controls whether the sidebar menu is expanded or collapsed
+  sidebar_expanded: bool = True
+
+
+def on_click_menu_icon(e: me.ClickEvent):
+  state = me.state(State)
+  state.sidebar_expanded = not state.sidebar_expanded
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/sidebar-example-3",
+)
+def sidebar_example_3():
+  state = me.state(State)
+  with me.box(
+    style=me.Style(
+      display="grid", grid_template_columns="1fr 50fr", height="100vh"
+    )
+  ):
+    # This block is the code for the sidebar
+    with me.box(
+      style=me.Style(
+        background=me.theme_var("surface-container"),
+        border=me.Border.symmetric(
+          horizontal=me.BorderSide(
+            width=1, style="solid", color=me.theme_var("outline-variant")
+          )
+        ),
+        height="100%",
+      )
+    ):
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        # Event handler to expand/collapse the sidebar.
+        on_click=on_click_menu_icon,
+        style=me.Style(
+          border=me.Border(
+            bottom=me.BorderSide(
+              width=1, color=me.theme_var("outline-variant"), style="solid"
+            )
+          ),
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        me.icon("menu")
+
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        style=me.Style(
+          border=me.Border(
+            bottom=me.BorderSide(
+              width=1, color=me.theme_var("outline-variant"), style="solid"
+            )
+          ),
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        if state.sidebar_expanded:
+          with me.box(
+            style=me.Style(
+              display="flex",
+              align_items="center",
+              gap=5,
+            )
+          ):
+            me.icon("home")
+            me.text("Home")
+        else:
+          with me.tooltip(message="Home tooltip"):
+            me.icon("home")
+
+      # This block is code for the sidebar menu item.
+      with me.box(
+        style=me.Style(
+          border=me.Border(
+            bottom=me.BorderSide(
+              width=1, color=me.theme_var("outline-variant"), style="solid"
+            )
+          ),
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        if state.sidebar_expanded:
+          with me.box(
+            style=me.Style(
+              display="flex",
+              align_items="center",
+              gap=5,
+            )
+          ):
+            me.icon("search")
+            me.text("Search")
+        else:
+          with me.tooltip(message="Search tooltip"):
+            me.icon("search")
+
+    # This block is for the main content to be added.
+    with me.box(style=me.Style(margin=me.Margin.all(15))):
+      me.text("Main body content goes here")
+
+<example>
+
+<example>
+# This file provides examples for creating headers.
+
+import mesop as me
+
+
+# This is an example of a two section header a fluid width
+# header with a title on the left and some example buttons
+# on the right.
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/header-example-1",
+)
+def headers_example_1():
+  with me.box(
+    style=me.Style(
+      background=me.theme_var("surface-container"),
+      border=me.Border.symmetric(
+        vertical=me.BorderSide(
+          width=1,
+          style="solid",
+          color=me.theme_var("outline-variant"),
+        )
+      ),
+      padding=me.Padding.all(10),
+    )
+  ):
+    is_mobile = me.viewport_size().width < 640
+    if is_mobile:
+      default_flex_style = me.Style(
+        align_items="center",
+        display="flex",
+        gap=5,
+        justify_content="space-between",
+      )
+    else:
+      default_flex_style = me.Style(
+        align_items="center",
+        display="flex",
+        gap=5,
+        justify_content="space-between",
+      )
+
+    with me.box(style=default_flex_style):
+      with me.box(style=me.Style(display="flex", gap=5)):
+        me.text(
+          "Your Title Here",
+          type="headline-6",
+          style=me.Style(margin=me.Margin(bottom=0)),
+        )
+
+      with me.box(style=me.Style(display="flex", gap=5)):
+        me.button("Home")
+        me.button("About")
+        me.button("FAQ")
+
+
+# This is an example of a three section header a fluid width
+# header with a title on the left, some example buttons
+# on the center, and a example button on the right.
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/header-example-2",
+)
+def headers_example_2():
+  with me.box(
+    style=me.Style(
+      background=me.theme_var("surface-container"),
+      border=me.Border.symmetric(
+        vertical=me.BorderSide(
+          width=1,
+          style="solid",
+          color=me.theme_var("outline-variant"),
+        )
+      ),
+      padding=me.Padding.all(10),
+    )
+  ):
+    is_mobile = me.viewport_size().width < 640
+    if is_mobile:
+      default_flex_style = me.Style(
+        align_items="center",
+        display="flex",
+        gap=5,
+        justify_content="space-between",
+      )
+    else:
+      default_flex_style = me.Style(
+        align_items="center",
+        display="flex",
+        gap=5,
+        justify_content="space-between",
+      )
+
+    with me.box(style=default_flex_style):
+      with me.box(style=me.Style(display="flex", gap=5)):
+        me.text(
+          "Your Title Here",
+          type="headline-6",
+          style=me.Style(margin=me.Margin(bottom=0)),
+        )
+
+      with me.box(style=me.Style(display="flex", gap=5)):
+        me.button("Home")
+        me.button("About")
+        me.button("FAQ")
+
+      with me.box(style=me.Style(display="flex", gap=5)):
+        me.button("Login", type="flat")
+
+
+# This is an example of a centered header with no title and
+# custom icon buttons.
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/header-example-3",
+)
+def headers_example_3():
+  with me.box(
+    style=me.Style(
+      background=me.theme_var("surface-container"),
+      border=me.Border.symmetric(
+        vertical=me.BorderSide(
+          width=1,
+          style="solid",
+          color=me.theme_var("outline-variant"),
+        )
+      ),
+      padding=me.Padding.all(10),
+    )
+  ):
+    is_mobile = me.viewport_size().width < 640
+    if is_mobile:
+      default_flex_style = me.Style(
+        align_items="center",
+        display="flex",
+        gap=5,
+        justify_content="center",
+      )
+    else:
+      default_flex_style = me.Style(
+        align_items="center",
+        display="flex",
+        gap=5,
+        justify_content="center",
+      )
+
+    with me.box(style=default_flex_style):
+      with me.box(style=me.Style(display="flex", gap=5)):
+        with me.content_button(
+          style=me.Style(
+            padding=me.Padding.symmetric(vertical=30, horizontal=25)
+          )
+        ):
+          me.icon("home")
+          me.text("Home")
+        with me.content_button(
+          style=me.Style(
+            padding=me.Padding.symmetric(vertical=30, horizontal=25)
+          )
+        ):
+          me.icon("info")
+          me.text("About")
+        with me.content_button(
+          style=me.Style(
+            padding=me.Padding.symmetric(vertical=30, horizontal=25)
+          )
+        ):
+          me.icon("contact_support")
+          me.text("FAQ")
+        with me.content_button(
+          style=me.Style(
+            padding=me.Padding.symmetric(vertical=30, horizontal=25)
+          )
+        ):
+          me.icon("login")
+          me.text("Login")
+
+<example>
+
+<example>
+# This file provides examples for creating layouts.
+
+import mesop as me
+
+
+# This is an example of a layout with a header and sidebar that is below the header.
+# There are also two columns
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/layout-example-1",
+)
+def layout_example_1():
+  # This is the grid that manages the layout.
+  with me.box(
+    style=me.Style(
+      display="grid",
+      # First column is for the sidebar which is why we use 1fr.
+      # The other two columns are equal width.
+      grid_template_columns="1fr 50fr 50fr",
+      # First row is for the header which is why we use 1fr.
+      grid_template_rows="1fr 50fr",
+      height="100vh",
+    )
+  ):
+    with me.box(
+      style=me.Style(
+        # Since the grid defines three columns, we need to span the header across all
+        # columns.
+        grid_column="1 / -1",
+        background=me.theme_var("surface-container"),
+        border=me.Border.symmetric(
+          vertical=me.BorderSide(
+            width=1,
+            style="solid",
+            color=me.theme_var("outline-variant"),
+          )
+        ),
+        padding=me.Padding.all(10),
+      )
+    ):
+      is_mobile = me.viewport_size().width < 640
+      if is_mobile:
+        default_flex_style = me.Style(
+          align_items="center",
+          display="flex",
+          gap=5,
+          justify_content="space-between",
+        )
+      else:
+        default_flex_style = me.Style(
+          align_items="center",
+          display="flex",
+          gap=5,
+          justify_content="space-between",
+        )
+
+      with me.box(style=default_flex_style):
+        with me.box(style=me.Style(display="flex", gap=5)):
+          me.text(
+            "Your Title Here",
+            type="headline-6",
+            style=me.Style(margin=me.Margin(bottom=0)),
+          )
+
+        with me.box(style=me.Style(display="flex", gap=5)):
+          me.button("Home")
+          me.button("About")
+          me.button("FAQ")
+
+    # This block is the code for the sidebar
+    with me.box(
+      style=me.Style(
+        background=me.theme_var("surface-container"),
+        border=me.Border.symmetric(
+          horizontal=me.BorderSide(
+            width=1, style="solid", color=me.theme_var("outline-variant")
+          )
+        ),
+        height="100%",
+      )
+    ):
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        style=me.Style(
+          border=me.Border(
+            bottom=me.BorderSide(
+              width=1, color=me.theme_var("outline-variant"), style="solid"
+            )
+          ),
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        with me.tooltip(message="Home tooltip"):
+          me.icon("home")
+
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        style=me.Style(
+          border=me.Border(
+            bottom=me.BorderSide(
+              width=1, color=me.theme_var("outline-variant"), style="solid"
+            )
+          ),
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        with me.tooltip(message="Search tooltip"):
+          me.icon("search")
+
+    # This block is for the first column content to be added.
+    with me.box(style=me.Style(margin=me.Margin.all(15))):
+      me.text("First column body content goes here")
+
+    # This block is for the second column content to be added.
+    with me.box(style=me.Style(margin=me.Margin.all(15))):
+      me.text("Second column body content goes here")
+
+
+# This is an example of a layout with header and sidebar at the same level.
+# The sidebar also expands and collapses.
+
+
+@me.stateclass
+class State:
+  # Controls whether the sidebar menu is expanded or collapsed
+  sidebar_expanded: bool = True
+
+
+def on_click_menu_icon(e: me.ClickEvent):
+  state = me.state(State)
+  state.sidebar_expanded = not state.sidebar_expanded
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/layout-example-2",
+)
+def layout_example_2():
+  state = me.state(State)
+  # This is the grid that manages the layout.
+  with me.box(
+    style=me.Style(
+      display="grid",
+      # First column is for the sidebar which is why we use 1fr.
+      grid_template_columns="1fr 50fr",
+      # First row is for the header which is why we use 1fr.
+      grid_template_rows="1fr 50fr",
+      height="100vh",
+    )
+  ):
+    # This block is the code for the sidebar
+    with me.box(
+      style=me.Style(
+        grid_row="1 / -1",
+        background=me.theme_var("surface-container"),
+        border=me.Border.symmetric(
+          horizontal=me.BorderSide(
+            width=1, style="solid", color=me.theme_var("outline-variant")
+          )
+        ),
+        height="100%",
+      )
+    ):
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        # Event handler to expand/collapse the sidebar.
+        on_click=on_click_menu_icon,
+        style=me.Style(
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        me.icon("menu")
+
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        style=me.Style(
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        if state.sidebar_expanded:
+          with me.box(
+            style=me.Style(
+              display="flex",
+              align_items="center",
+              gap=5,
+            )
+          ):
+            me.icon("home")
+            me.text("Home")
+        else:
+          with me.tooltip(message="Home tooltip"):
+            me.icon("home")
+
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        style=me.Style(
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        if state.sidebar_expanded:
+          with me.box(
+            style=me.Style(
+              display="flex",
+              align_items="center",
+              gap=5,
+            )
+          ):
+            me.icon("search")
+            me.text("Search")
+        else:
+          with me.tooltip(message="Search tooltip"):
+            me.icon("search")
+
+    with me.box(
+      style=me.Style(
+        background=me.theme_var("surface-container"),
+        padding=me.Padding.all(10),
+        border=me.Border(
+          bottom=me.BorderSide(
+            width=1, style="solid", color=me.theme_var("outline-variant")
+          )
+        ),
+      )
+    ):
+      is_mobile = me.viewport_size().width < 640
+      if is_mobile:
+        default_flex_style = me.Style(
+          align_items="center",
+          display="flex",
+          gap=5,
+          justify_content="space-between",
+        )
+      else:
+        default_flex_style = me.Style(
+          align_items="center",
+          display="flex",
+          gap=5,
+          justify_content="space-between",
+        )
+
+      with me.box(style=default_flex_style):
+        with me.box(style=me.Style(display="flex", gap=5)):
+          me.text(
+            "Your Title Here",
+            type="headline-6",
+            style=me.Style(margin=me.Margin(bottom=0)),
+          )
+
+        with me.box(style=me.Style(display="flex", gap=5)):
+          me.button("Home")
+          me.button("About")
+          me.button("FAQ")
+
+    # This block is for the main content to be added.
+    with me.box(style=me.Style(margin=me.Margin.all(15))):
+      me.text("Main body content goes here")
+
+
+# This is an example of a layout with a header, no sidebar, and four content columns
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/layout-example-3",
+)
+def layout_example_3():
+  # This is the grid that manages the layout.
+  with me.box(
+    style=me.Style(
+      display="grid",
+      # Three columns
+      grid_template_columns="1fr 1fr 1fr 1fr",
+      # First row is for the header which is why we use 1fr to 50fr.
+      grid_template_rows="1fr 50fr",
+      height="100vh",
+    )
+  ):
+    with me.box(
+      style=me.Style(
+        # Since the grid defines four columns, we need to span the header across all
+        # columns.
+        grid_column="1 / -1",
+        background=me.theme_var("surface-container"),
+        border=me.Border.symmetric(
+          vertical=me.BorderSide(
+            width=1,
+            style="solid",
+            color=me.theme_var("outline-variant"),
+          )
+        ),
+        padding=me.Padding.all(10),
+      )
+    ):
+      is_mobile = me.viewport_size().width < 640
+      if is_mobile:
+        default_flex_style = me.Style(
+          align_items="center",
+          display="flex",
+          gap=5,
+          justify_content="space-between",
+        )
+      else:
+        default_flex_style = me.Style(
+          align_items="center",
+          display="flex",
+          gap=5,
+          justify_content="space-between",
+        )
+
+      with me.box(style=default_flex_style):
+        with me.box(style=me.Style(display="flex", gap=5)):
+          me.text(
+            "Your Title Here",
+            type="headline-6",
+            style=me.Style(margin=me.Margin(bottom=0)),
+          )
+
+        with me.box(style=me.Style(display="flex", gap=5)):
+          me.button("Home")
+          me.button("About")
+          me.button("FAQ")
+
+    # This block is for the first column content to be added.
+    with me.box(style=me.Style(margin=me.Margin.all(15))):
+      me.text("First column body content goes here")
+
+    # This block is for the second column content to be added.
+    with me.box(style=me.Style(margin=me.Margin.all(15))):
+      me.text("Second column body content goes here")
+
+    # This block is for the third column content to be added.
+    with me.box(style=me.Style(margin=me.Margin.all(15))):
+      me.text("Third column body content goes here")
+
+    # This block is for the fourth column content to be added.
+    with me.box(style=me.Style(margin=me.Margin.all(15))):
+      me.text("Fourth column body content goes here")
+
+<example>
+
+<example>
+# Examples of chat messages for chat bot interfaces
+import mesop as me
+
+USER_PLACEHOLDER_TEXT = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In et lectus nec lorem pretium euismod?"
+BOT_PLACEHOLDER_TEXT = """
+# Fusce in dui mi. Cras enim metus
+
+Maximus sit amet ultrices at, *viverra* vitae ante. Curabitur auctor ut eros id commodo.
+Sed ultricies ornare lectus dictum facilisis. Aenean malesuada sed nisi id tempor.
+
+- Mauris aliquet volutpat pretium.
+- Nulla dapibus nibh id nisi mollis efficitur.
+
+Vivamus ac **commodo** elit. Nunc dictum mauris sit amet mollis posuere. Nulla fringilla,
+nunc sed varius posuere, augue nibh imperdiet lorem, rutrum lobortis leo leo sit amet sem.
+""".strip()
+
+
+# Example of a minimalist chat messages. Each row has the user indicator on the left and
+# the corresponding markdown message on the right side. The message use the default
+# background.
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/chat-msg-example-1",
+)
+def chat_msg_example_1():
+  # User chat message
+  with me.box(
+    style=me.Style(
+      color=me.theme_var("on-surface"),
+      background=me.theme_var("surface-container-lowest"),
+    )
+  ):
+    with me.box(
+      style=me.Style(display="flex", gap=15, margin=me.Margin.all(20))
+    ):
+      # User avatar/icon box
+      me.text(
+        "U",
+        style=me.Style(
+          background=me.theme_var("primary"),
+          border_radius="50%",
+          color=me.theme_var("on-primary"),
+          font_size=20,
+          height=40,
+          width=40,
+          text_align="center",
+          line_height="1",
+          padding=me.Padding(top=10),
+          margin=me.Margin(top=16),
+        ),
+      )
+      # User query
+      me.markdown(USER_PLACEHOLDER_TEXT)
+
+    # Bot chat message
+    with me.box(
+      style=me.Style(display="flex", gap=15, margin=me.Margin.all(20))
+    ):
+      # Bot avatar/icon box
+      me.text(
+        "B",
+        style=me.Style(
+          background=me.theme_var("secondary"),
+          border_radius="50%",
+          color=me.theme_var("on-secondary"),
+          font_size=20,
+          height=40,
+          width=40,
+          text_align="center",
+          line_height="1",
+          padding=me.Padding(top=10),
+          margin=me.Margin(top=16),
+        ),
+      )
+      # Bot message response
+      me.markdown(
+        BOT_PLACEHOLDER_TEXT, style=me.Style(color=me.theme_var("on-surface"))
+      )
+
+
+# Example of alternating bubble chat messages.
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/chat-msg-example-2",
+)
+def chat_msg_example_2():
+  with me.box(
+    style=me.Style(
+      color=me.theme_var("on-surface"),
+      background=me.theme_var("surface-container-lowest"),
+    )
+  ):
+    # User chat message
+    with me.box(
+      style=me.Style(
+        display="flex", justify_content="end", gap=15, margin=me.Margin.all(20)
+      )
+    ):
+      # Add right aligned message bubble
+      with me.box(
+        style=me.Style(
+          border_radius=15,
+          background=me.theme_var("primary-container"),
+          color=me.theme_var("on-primary-container"),
+          padding=me.Padding.all(10),
+          width="66%",
+        )
+      ):
+        me.markdown(USER_PLACEHOLDER_TEXT)
+
+    # Bot chat message
+    with me.box(style=me.Style(margin=me.Margin.all(20))):
+      # Bot name label
+      me.text(
+        "Bot",
+        style=me.Style(
+          font_weight="bold", font_size=16, margin=me.Margin(left=15)
+        ),
+      )
+      # Add left aligned message bubble
+      with me.box(
+        style=me.Style(
+          border_radius=15,
+          background=me.theme_var("secondary-container"),
+          color=me.theme_var("on-secondary-container"),
+          padding=me.Padding.all(10),
+          width="66%",
+        )
+      ):
+        me.markdown(
+          BOT_PLACEHOLDER_TEXT,
+          style=me.Style(color=me.theme_var("on-secondary-container")),
+        )
+
+
+# Example of a chat messages that also returns an image.
+# background.
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/chat-msg-example-3",
+)
+def chat_msg_example_3():
+  # User chat message
+  with me.box(
+    style=me.Style(
+      color=me.theme_var("on-surface"),
+      background=me.theme_var("surface-container-lowest"),
+    )
+  ):
+    with me.box(
+      style=me.Style(display="flex", gap=15, margin=me.Margin.all(20))
+    ):
+      # User avatar/icon box
+      me.text(
+        "U",
+        style=me.Style(
+          background=me.theme_var("primary"),
+          border_radius="50%",
+          color=me.theme_var("on-primary"),
+          font_size=20,
+          height=40,
+          width=40,
+          text_align="center",
+          line_height="1",
+          padding=me.Padding(top=10),
+          margin=me.Margin(top=16),
+        ),
+      )
+      # User query
+      me.markdown(USER_PLACEHOLDER_TEXT)
+
+    # Bot chat message
+    with me.box(
+      style=me.Style(display="flex", gap=15, margin=me.Margin.all(20))
+    ):
+      # Bot avatar/icon box
+      me.text(
+        "B",
+        style=me.Style(
+          background=me.theme_var("secondary"),
+          border_radius="50%",
+          color=me.theme_var("on-secondary"),
+          font_size=20,
+          height=40,
+          width=40,
+          text_align="center",
+          line_height="1",
+          padding=me.Padding(top=10),
+          margin=me.Margin(top=16),
+        ),
+      )
+      # Bot image response
+      me.image(
+        src="https://interactive-examples.mdn.mozilla.net/media/cc0-images/grapefruit-slice-332-332.jpg",
+        alt="Grapefruit",
+        style=me.Style(width="100%"),
+      )
+
+<example>
+
+<example>
+# Examples of inputs for chat bot interfaces
+import mesop as me
+
+
+# Example using a normal textarea and button
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/chat-inputs-example-1",
+)
+def chat_input_1():
+  with me.box(style=me.Style(display="flex", width="100%", gap=10)):
+    with me.box(style=me.Style(flex_grow=1)):
+      me.textarea(
+        placeholder="Default chat input",
+        style=me.Style(width="100%"),
+        rows=2,
+      )
+    me.button("Send", type="flat")
+
+
+# Example using a subtly styled textarea and buttons
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/chat-inputs-example-2",
+)
+def chat_input_2():
+  with me.box(
+    style=me.Style(
+      color=me.theme_var("on-surface-variant"),
+      border_radius=16,
+      padding=me.Padding.all(8),
+      background=me.theme_var("surface-container-low"),
+      display="flex",
+      width="100%",
+    )
+  ):
+    with me.box(
+      style=me.Style(
+        flex_grow=1,
+      )
+    ):
+      me.native_textarea(
+        autosize=True,
+        min_rows=4,
+        placeholder="Subtle chat input",
+        style=me.Style(
+          color=me.theme_var("on-surface-variant"),
+          padding=me.Padding(top=16, left=16),
+          background=me.theme_var("surface-container-low"),
+          outline="none",
+          width="100%",
+          overflow_y="auto",
+          border=me.Border.all(
+            me.BorderSide(style="none"),
+          ),
+        ),
+      )
+    with me.content_button(type="icon"):
+      me.icon("upload")
+    with me.content_button(type="icon"):
+      me.icon("photo")
+    with me.content_button(type="icon"):
+      me.icon("send")
+
+
+# Example using a elevated styled textarea and buttons
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/chat-inputs-example-3",
+)
+def chat_input_3():
+  with me.box(
+    style=me.Style(
+      padding=me.Padding.all(8),
+      background=me.theme_var("surface-container-lowest"),
+      display="flex",
+      width="100%",
+      border=me.Border.all(
+        me.BorderSide(width=0, style="solid", color=me.theme_var("outline"))
+      ),
+      box_shadow="0 10px 20px #0000000a, 0 2px 6px #0000000a, 0 0 1px #0000000a",
+    )
+  ):
+    with me.box(
+      style=me.Style(
+        flex_grow=1,
+      )
+    ):
+      me.native_textarea(
+        autosize=True,
+        min_rows=4,
+        placeholder="Elevated chat input",
+        style=me.Style(
+          color=me.theme_var("on-surface-variant"),
+          font_family="monospace",
+          padding=me.Padding(top=16, left=16),
+          background=me.theme_var("surface-container-lowest"),
+          outline="none",
+          width="100%",
+          overflow_y="auto",
+          border=me.Border.all(
+            me.BorderSide(style="none"),
+          ),
+        ),
+      )
+    with me.content_button(type="icon"):
+      me.icon("upload")
+    with me.content_button(type="icon"):
+      me.icon("photo")
+    with me.content_button(type="icon"):
+      me.icon("send")
+
+<example>
+
+<example>
+# Examples of icon buttons that may be useful for chat UIs.
+# Note: These buttons event handler functions.
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/ai/chat-buttons-example-1",
+)
+def chat_buttons_examples():
+  # The thumb_up icon is good for rating responses positively
+  # This example also shows how to add a tooltip around the the icon button
+  with me.tooltip(message="Good response", position="above"):
+    with me.content_button(type="icon"):
+      me.icon("thumb_up")
+
+  # The thumb_down icon is good for rating responses negatively
+  with me.content_button(type="icon"):
+    me.icon("thumb_down")
+
+  # The add icon is good for starting/resetting a chat
+  with me.content_button(type="icon"):
+    me.icon("add")
+
+  # The restart_alt icon is good for regenerating a messsage
+  with me.content_button(type="icon"):
+    me.icon("restart_alt")
+
+  # The dark_mode icon is good for dark mode
+  with me.content_button(type="icon"):
+    me.icon("dark_mode")
+
+  # The light_mode icon is good for light mode
+  with me.content_button(type="icon"):
+    me.icon("light_mode")
+
+  # The send icon is good for a button that submits user queries
+  with me.content_button(type="icon"):
+    me.icon("send")
+
+<example>

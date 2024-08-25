@@ -1,0 +1,1853 @@
+This section provides examples of Mesop code usage. Each example is wrapped in <example> tags.
+
+<example>
+import random
+import time
+from dataclasses import dataclass
+from typing import Literal
+
+import mesop as me
+
+Role = Literal["user", "assistant"]
+
+
+@dataclass(kw_only=True)
+class ChatMessage:
+  """Chat message metadata."""
+
+  role: Role = "user"
+  content: str = ""
+  edited: bool = False
+
+
+@me.stateclass
+class State:
+  input: str
+  output: list[ChatMessage]
+  in_progress: bool
+  rewrite: str
+  rewrite_message_index: int
+  preview_rewrite: str
+  preview_original: str
+  modal_open: bool
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/llm_rewriter",
+  title="LLM Rewriter",
+)
+def page():
+  state = me.state(State)
+
+  # Modal
+  with me.box(style=_make_modal_background_style(state.modal_open)):
+    with me.box(style=_STYLE_MODAL_CONTAINER):
+      with me.box(style=_STYLE_MODAL_CONTENT):
+        me.textarea(
+          label="Rewrite",
+          style=_STYLE_INPUT_WIDTH,
+          value=state.rewrite,
+          on_input=on_rewrite_input,
+        )
+        with me.box():
+          me.button(
+            "Submit Rewrite",
+            color="primary",
+            type="flat",
+            on_click=on_click_submit_rewrite,
+          )
+          me.button(
+            "Cancel",
+            on_click=on_click_cancel_rewrite,
+          )
+        with me.box(style=_STYLE_PREVIEW_CONTAINER):
+          with me.box(style=_STYLE_PREVIEW_ORIGINAL):
+            me.text("Original Message", type="headline-6")
+            me.markdown(state.preview_original)
+
+          with me.box(style=_STYLE_PREVIEW_REWRITE):
+            me.text("Preview Rewrite", type="headline-6")
+            me.markdown(state.preview_rewrite)
+
+  # Chat UI
+  with me.box(style=_STYLE_APP_CONTAINER):
+    with me.box(style=_make_style_chat_ui_container(bool(_TITLE))):
+      me.text(_TITLE, type="headline-5", style=_STYLE_TITLE)
+      with me.box(style=_STYLE_CHAT_BOX):
+        for index, msg in enumerate(state.output):
+          with me.box(
+            style=_make_style_chat_bubble_wrapper(msg.role),
+            key=f"msg-{index}",
+            on_click=on_click_rewrite_msg,
+          ):
+            if msg.role == _ROLE_ASSISTANT:
+              me.text(
+                _display_username(_BOT_USER_DEFAULT, msg.edited),
+                style=_STYLE_CHAT_BUBBLE_NAME,
+              )
+            with me.box(style=_make_chat_bubble_style(msg.role, msg.edited)):
+              if msg.role == _ROLE_USER:
+                me.text(msg.content, style=_STYLE_CHAT_BUBBLE_PLAINTEXT)
+              else:
+                me.markdown(msg.content)
+                with me.tooltip(message="Rewrite response"):
+                  me.icon(icon="edit_note")
+
+        if state.in_progress:
+          with me.box(key="scroll-to", style=me.Style(height=300)):
+            pass
+      with me.box(style=_STYLE_CHAT_INPUT_BOX):
+        with me.box(style=me.Style(flex_grow=1)):
+          me.input(
+            label=_LABEL_INPUT,
+            # Workaround: update key to clear input.
+            key=f"input-{len(state.output)}",
+            on_input=on_chat_input,
+            on_enter=on_click_submit_chat_msg,
+            style=_STYLE_CHAT_INPUT,
+          )
+        with me.content_button(
+          color="primary",
+          type="flat",
+          disabled=state.in_progress,
+          on_click=on_click_submit_chat_msg,
+          style=_STYLE_CHAT_BUTTON,
+        ):
+          me.icon(
+            _LABEL_BUTTON_IN_PROGRESS if state.in_progress else _LABEL_BUTTON
+          )
+
+
+# Event Handlers
+
+
+def on_chat_input(e: me.InputEvent):
+  """Capture chat text input."""
+  state = me.state(State)
+  state.input = e.value
+
+
+def on_rewrite_input(e: me.InputEvent):
+  """Capture rewrite text input."""
+  state = me.state(State)
+  state.preview_rewrite = e.value
+
+
+def on_click_rewrite_msg(e: me.ClickEvent):
+  """Shows rewrite modal when a message is clicked.
+
+  Edit this function to persist rewritten messages.
+  """
+  state = me.state(State)
+  index = int(e.key.replace("msg-", ""))
+  message = state.output[index]
+  if message.role == _ROLE_USER or state.in_progress:
+    return
+  state.modal_open = True
+  state.rewrite = message.content
+  state.rewrite_message_index = index
+  state.preview_original = message.content
+  state.preview_rewrite = message.content
+
+
+def on_click_submit_rewrite(e: me.ClickEvent):
+  """Submits rewrite message."""
+  state = me.state(State)
+  state.modal_open = False
+  message = state.output[state.rewrite_message_index]
+  if message.content != state.preview_rewrite:
+    message.content = state.preview_rewrite
+    message.edited = True
+  state.rewrite_message_index = 0
+  state.rewrite = ""
+  state.preview_original = ""
+  state.preview_rewrite = ""
+
+
+def on_click_cancel_rewrite(e: me.ClickEvent):
+  """Hides rewrite modal."""
+  state = me.state(State)
+  state.modal_open = False
+  state.rewrite_message_index = 0
+  state.rewrite = ""
+  state.preview_original = ""
+  state.preview_rewrite = ""
+
+
+def on_click_submit_chat_msg(e: me.ClickEvent | me.InputEnterEvent):
+  """Handles submitting a chat message."""
+  state = me.state(State)
+  if state.in_progress or not state.input:
+    return
+  input = state.input
+  state.input = ""
+  yield
+
+  output = state.output
+  if output is None:
+    output = []
+  output.append(ChatMessage(role=_ROLE_USER, content=input))
+  state.in_progress = True
+  yield
+
+  me.scroll_into_view(key="scroll-to")
+  time.sleep(0.15)
+  yield
+
+  start_time = time.time()
+  output_message = respond_to_chat(input, state.output)
+  assistant_message = ChatMessage(role=_ROLE_ASSISTANT)
+  output.append(assistant_message)
+  state.output = output
+  for content in output_message:
+    assistant_message.content += content
+    # TODO: 0.25 is an abitrary choice. In the future, consider making this adjustable.
+    if (time.time() - start_time) >= 0.25:
+      start_time = time.time()
+      yield
+
+  state.in_progress = False
+  yield
+
+
+# Transform function for processing chat messages.
+
+
+def respond_to_chat(input: str, history: list[ChatMessage]):
+  """Displays random canned text.
+
+  Edit this function to process messages with a real chatbot/LLM.
+  """
+  lines = [
+    (
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
+      "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+    ),
+    "Laoreet sit amet cursus sit amet dictum sit amet.",
+    "At lectus urna duis convallis.",
+    "A pellentesque sit amet porttitor eget.",
+    "Mauris nunc congue nisi vitae suscipit tellus mauris a diam.",
+    "Aliquet lectus proin nibh nisl condimentum id.",
+    "Integer malesuada nunc vel risus commodo viverra maecenas accumsan.",
+    "Tempor id eu nisl nunc mi.",
+    "Id consectetur purus ut faucibus pulvinar.",
+    "Mauris pharetra et ultrices neque ornare.",
+    "Facilisis magna etiam tempor orci.",
+    "Mauris pharetra et ultrices neque.",
+    "Sit amet facilisis magna etiam tempor orci.",
+    "Amet consectetur adipiscing elit pellentesque habitant morbi tristique.",
+    "Egestas erat imperdiet sed euismod.",
+    "Tincidunt praesent semper feugiat nibh sed pulvinar proin gravida.",
+    "Habitant morbi tristique senectus et netus et malesuada.",
+  ]
+  for line in random.sample(lines, random.randint(3, len(lines) - 1)):
+    yield line + " "
+
+
+# Constants
+
+_TITLE = "LLM Rewriter"
+
+_ROLE_USER = "user"
+_ROLE_ASSISTANT = "assistant"
+
+_BOT_USER_DEFAULT = "mesop-bot"
+
+
+# Styles
+
+_COLOR_BACKGROUND = "#f0f4f8"
+_COLOR_CHAT_BUBBLE_YOU = "#f2f2f2"
+_COLOR_CHAT_BUBBLE_BOT = "#ebf3ff"
+_COLOR_CHAT_BUUBBLE_EDITED = "#f2ebff"
+
+_DEFAULT_PADDING = me.Padding.all(20)
+_DEFAULT_BORDER_SIDE = me.BorderSide(
+  width="1px", style="solid", color="#ececec"
+)
+
+_LABEL_BUTTON = "send"
+_LABEL_BUTTON_IN_PROGRESS = "pending"
+_LABEL_INPUT = "Enter your prompt"
+
+_STYLE_INPUT_WIDTH = me.Style(width="100%")
+
+_STYLE_APP_CONTAINER = me.Style(
+  background=_COLOR_BACKGROUND,
+  display="grid",
+  height="100vh",
+  grid_template_columns="repeat(1, 1fr)",
+)
+_STYLE_TITLE = me.Style(padding=me.Padding(left=10))
+_STYLE_CHAT_BOX = me.Style(
+  height="100%",
+  overflow_y="scroll",
+  padding=_DEFAULT_PADDING,
+  margin=me.Margin(bottom=20),
+  border_radius="10px",
+  border=me.Border(
+    left=_DEFAULT_BORDER_SIDE,
+    right=_DEFAULT_BORDER_SIDE,
+    top=_DEFAULT_BORDER_SIDE,
+    bottom=_DEFAULT_BORDER_SIDE,
+  ),
+)
+_STYLE_CHAT_INPUT = me.Style(width="100%")
+_STYLE_CHAT_INPUT_BOX = me.Style(
+  padding=me.Padding(top=30), display="flex", flex_direction="row"
+)
+_STYLE_CHAT_BUTTON = me.Style(margin=me.Margin(top=8, left=8))
+_STYLE_CHAT_BUBBLE_NAME = me.Style(
+  font_weight="bold",
+  font_size="12px",
+  padding=me.Padding(left=15, right=15, bottom=5),
+)
+_STYLE_CHAT_BUBBLE_PLAINTEXT = me.Style(margin=me.Margin.symmetric(vertical=15))
+
+_STYLE_MODAL_CONTAINER = me.Style(
+  background="#fff",
+  margin=me.Margin.symmetric(vertical="0", horizontal="auto"),
+  width="min(1024px, 100%)",
+  box_sizing="content-box",
+  height="100vh",
+  overflow_y="scroll",
+  box_shadow=("0 3px 1px -2px #0003, 0 2px 2px #00000024, 0 1px 5px #0000001f"),
+)
+
+_STYLE_MODAL_CONTENT = me.Style(margin=me.Margin.all(20))
+
+_STYLE_PREVIEW_CONTAINER = me.Style(
+  display="grid",
+  grid_template_columns="repeat(2, 1fr)",
+)
+
+_STYLE_PREVIEW_ORIGINAL = me.Style(color="#777", padding=_DEFAULT_PADDING)
+
+_STYLE_PREVIEW_REWRITE = me.Style(
+  background=_COLOR_CHAT_BUUBBLE_EDITED, padding=_DEFAULT_PADDING
+)
+
+
+def _make_style_chat_ui_container(has_title: bool) -> me.Style:
+  """Generates styles for chat UI container depending on if there is a title or not.
+
+  Args:
+    has_title: Whether the Chat UI is display a title or not.
+  """
+  return me.Style(
+    display="grid",
+    grid_template_columns="repeat(1, 1fr)",
+    grid_template_rows="1fr 14fr 1fr" if has_title else "5fr 1fr",
+    margin=me.Margin.symmetric(vertical=0, horizontal="auto"),
+    width="min(1024px, 100%)",
+    height="100vh",
+    background="#fff",
+    box_shadow=(
+      "0 3px 1px -2px #0003, 0 2px 2px #00000024, 0 1px 5px #0000001f"
+    ),
+    padding=me.Padding(top=20, left=20, right=20),
+  )
+
+
+def _make_style_chat_bubble_wrapper(role: Role) -> me.Style:
+  """Generates styles for chat bubble position.
+
+  Args:
+    role: Chat bubble alignment depends on the role
+  """
+  align_items = "end" if role == _ROLE_USER else "start"
+  return me.Style(
+    display="flex",
+    flex_direction="column",
+    align_items=align_items,
+  )
+
+
+def _make_chat_bubble_style(role: Role, edited: bool) -> me.Style:
+  """Generates styles for chat bubble.
+
+  Args:
+    role: Chat bubble background color depends on the role
+    edited: Whether chat message was edited or not.
+  """
+  background = _COLOR_CHAT_BUBBLE_YOU
+  if role == _ROLE_ASSISTANT:
+    background = _COLOR_CHAT_BUBBLE_BOT
+  if edited:
+    background = _COLOR_CHAT_BUUBBLE_EDITED
+
+  return me.Style(
+    width="80%",
+    font_size="13px",
+    background=background,
+    border_radius="15px",
+    padding=me.Padding(right=15, left=15, bottom=3),
+    margin=me.Margin(bottom=10),
+    border=me.Border(
+      left=_DEFAULT_BORDER_SIDE,
+      right=_DEFAULT_BORDER_SIDE,
+      top=_DEFAULT_BORDER_SIDE,
+      bottom=_DEFAULT_BORDER_SIDE,
+    ),
+  )
+
+
+def _make_modal_background_style(modal_open: bool) -> me.Style:
+  """Makes style for modal background.
+
+  Args:
+    modal_open: Whether the modal is open.
+  """
+  return me.Style(
+    display="block" if modal_open else "none",
+    position="fixed",
+    z_index=1000,
+    width="100%",
+    height="100%",
+    overflow_x="auto",
+    overflow_y="auto",
+    background="rgba(0,0,0,0.4)",
+  )
+
+
+def _display_username(username: str, edited: bool = False) -> str:
+  """Displays the username
+
+  Args:
+    username: Name of the user
+    edited: Whether the message has been edited.
+  """
+  edited_text = " (edited)" if edited else ""
+  return username + edited_text
+
+<example>
+
+<example>
+import random
+import time
+from typing import Callable
+
+import mesop as me
+
+_TEMPERATURE_MIN = 0.0
+_TEMPERATURE_MAX = 2.0
+_TOKEN_LIMIT_MIN = 1
+_TOKEN_LIMIT_MAX = 8192
+
+
+@me.stateclass
+class State:
+  title: str = "LLM Playground"
+  # Prompt / Response
+  input: str
+  response: str
+  # Tab open/close
+  prompt_tab: bool = True
+  response_tab: bool = True
+  # Model configs
+  selected_model: str = "gemini-1.5"
+  selected_region: str = "us-east4"
+  temperature: float = 1.0
+  temperature_for_input: float = 1.0
+  token_limit: int = _TOKEN_LIMIT_MAX
+  token_limit_for_input: int = _TOKEN_LIMIT_MAX
+  stop_sequence: str = ""
+  stop_sequences: list[str]
+  # Modal
+  modal_open: bool = False
+  # Workaround for clearing inputs
+  clear_prompt_count: int = 0
+  clear_sequence_count: int = 0
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/llm_playground",
+  title="LLM Playground",
+)
+def page():
+  state = me.state(State)
+
+  # Modal
+  with modal(modal_open=state.modal_open):
+    me.text("Get code", type="headline-5")
+    if "gemini" in state.selected_model:
+      me.text(
+        "Use the following code in your application to request a model response."
+      )
+      with me.box(style=_STYLE_CODE_BOX):
+        me.markdown(
+          _GEMINI_CODE_TEXT.format(
+            content=state.input.replace('"', '\\"'),
+            model=state.selected_model,
+            region=state.selected_region,
+            stop_sequences=make_stop_sequence_str(state.stop_sequences),
+            token_limit=state.token_limit,
+            temperature=state.temperature,
+          )
+        )
+    else:
+      me.text(
+        "You can use the following code to start integrating your current prompt and settings into your application."
+      )
+      with me.box(style=_STYLE_CODE_BOX):
+        me.markdown(
+          _GPT_CODE_TEXT.format(
+            content=state.input.replace('"', '\\"').replace("\n", "\\n"),
+            model=state.selected_model,
+            stop_sequences=make_stop_sequence_str(state.stop_sequences),
+            token_limit=state.token_limit,
+            temperature=state.temperature,
+          )
+        )
+    me.button(label="Close", type="raised", on_click=on_click_modal)
+
+  # Main content
+  with me.box(style=_STYLE_CONTAINER):
+    # Main Header
+    with me.box(style=_STYLE_MAIN_HEADER):
+      with me.box(style=_STYLE_TITLE_BOX):
+        me.text(
+          state.title,
+          type="headline-6",
+          style=me.Style(line_height="24px", margin=me.Margin(bottom=0)),
+        )
+
+    # Toolbar Header
+    with me.box(style=_STYLE_CONFIG_HEADER):
+      icon_button(
+        icon="code", tooltip="Code", label="CODE", on_click=on_click_show_code
+      )
+
+    # Main Content
+    with me.box(style=_STYLE_MAIN_COLUMN):
+      # Prompt Tab
+      with tab_box(header="Prompt", key="prompt_tab"):
+        me.textarea(
+          label="Write your prompt here, insert media and then click Submit",
+          # Workaround: update key to clear input.
+          key=f"prompt-{state.clear_prompt_count}",
+          on_input=on_prompt_input,
+          style=_STYLE_INPUT_WIDTH,
+        )
+        me.button(label="Submit", type="flat", on_click=on_click_submit)
+        me.button(label="Clear", on_click=on_click_clear)
+
+      # Response Tab
+      with tab_box(header="Response", key="response_tab"):
+        if state.response:
+          me.markdown(state.response)
+        else:
+          me.markdown(
+            "The model will generate a response after you click Submit."
+          )
+
+    # LLM Config
+    with me.box(style=_STYLE_CONFIG_COLUMN):
+      me.select(
+        options=[
+          me.SelectOption(label="Gemini 1.5", value="gemini-1.5"),
+          me.SelectOption(label="Chat-GPT Turbo", value="gpt-3.5-turbo"),
+        ],
+        label="Model",
+        style=_STYLE_INPUT_WIDTH,
+        on_selection_change=on_model_select,
+        value=state.selected_model,
+      )
+
+      if "gemini" in state.selected_model:
+        me.select(
+          options=[
+            me.SelectOption(label="us-central1 (Iowa)", value="us-central1"),
+            me.SelectOption(
+              label="us-east4 (North Virginia)", value="us-east4"
+            ),
+          ],
+          label="Region",
+          style=_STYLE_INPUT_WIDTH,
+          on_selection_change=on_region_select,
+          value=state.selected_region,
+        )
+
+      me.text("Temperature", style=_STYLE_SLIDER_LABEL)
+      with me.box(style=_STYLE_SLIDER_INPUT_BOX):
+        with me.box(style=_STYLE_SLIDER_WRAP):
+          me.slider(
+            min=_TEMPERATURE_MIN,
+            max=_TEMPERATURE_MAX,
+            step=0.1,
+            style=_STYLE_SLIDER,
+            on_value_change=on_slider_temperature,
+            value=state.temperature,
+          )
+        me.input(
+          style=_STYLE_SLIDER_INPUT,
+          value=str(state.temperature_for_input),
+          on_input=on_input_temperature,
+        )
+
+      me.text("Output Token Limit", style=_STYLE_SLIDER_LABEL)
+      with me.box(style=_STYLE_SLIDER_INPUT_BOX):
+        with me.box(style=_STYLE_SLIDER_WRAP):
+          me.slider(
+            min=_TOKEN_LIMIT_MIN,
+            max=_TOKEN_LIMIT_MAX,
+            style=_STYLE_SLIDER,
+            on_value_change=on_slider_token_limit,
+            value=state.token_limit,
+          )
+        me.input(
+          style=_STYLE_SLIDER_INPUT,
+          value=str(state.token_limit_for_input),
+          on_input=on_input_token_limit,
+        )
+
+      with me.box(style=_STYLE_STOP_SEQUENCE_BOX):
+        with me.box(style=_STYLE_STOP_SEQUENCE_WRAP):
+          me.input(
+            label="Add stop sequence",
+            style=_STYLE_INPUT_WIDTH,
+            on_input=on_stop_sequence_input,
+            # Workaround: update key to clear input.
+            key=f"input-sequence-{state.clear_sequence_count}",
+          )
+        with me.content_button(
+          style=me.Style(margin=me.Margin(left=10)),
+          on_click=on_click_add_stop_sequence,
+        ):
+          with me.tooltip(message="Add stop Sequence"):
+            me.icon(icon="add_circle")
+
+      # Stop sequence "chips"
+      for index, sequence in enumerate(state.stop_sequences):
+        me.button(
+          key=f"sequence-{index}",
+          label=sequence,
+          on_click=on_click_remove_stop_sequence,
+          type="raised",
+          style=_STYLE_STOP_SEQUENCE_CHIP,
+        )
+
+
+# HELPER COMPONENTS
+
+
+@me.component
+def icon_button(*, icon: str, label: str, tooltip: str, on_click: Callable):
+  """Icon button with text and tooltip."""
+  with me.content_button(on_click=on_click):
+    with me.tooltip(message=tooltip):
+      with me.box(style=me.Style(display="flex")):
+        me.icon(icon=icon)
+        me.text(
+          label, style=me.Style(line_height="24px", margin=me.Margin(left=5))
+        )
+
+
+@me.content_component
+def tab_box(*, header: str, key: str):
+  """Collapsible tab box"""
+  state = me.state(State)
+  tab_open = getattr(state, key)
+  with me.box(style=me.Style(width="100%", margin=me.Margin(bottom=20))):
+    # Tab Header
+    with me.box(
+      key=key,
+      on_click=on_click_tab_header,
+      style=me.Style(padding=_DEFAULT_PADDING, border=_DEFAULT_BORDER),
+    ):
+      with me.box(style=me.Style(display="flex")):
+        me.icon(
+          icon="keyboard_arrow_down" if tab_open else "keyboard_arrow_right"
+        )
+        me.text(
+          header,
+          style=me.Style(
+            line_height="24px", margin=me.Margin(left=5), font_weight="bold"
+          ),
+        )
+    # Tab Content
+    with me.box(
+      style=me.Style(
+        padding=_DEFAULT_PADDING,
+        border=_DEFAULT_BORDER,
+        display="block" if tab_open else "none",
+      )
+    ):
+      me.slot()
+
+
+@me.content_component
+def modal(modal_open: bool):
+  """Basic modal box."""
+  with me.box(style=_make_modal_background_style(modal_open)):
+    with me.box(style=_STYLE_MODAL_CONTAINER):
+      with me.box(style=_STYLE_MODAL_CONTENT):
+        me.slot()
+
+
+# EVENT HANDLERS
+
+
+def on_click_clear(e: me.ClickEvent):
+  """Click event for clearing prompt text."""
+  state = me.state(State)
+  state.clear_prompt_count += 1
+  state.input = ""
+  state.response = ""
+
+
+def on_prompt_input(e: me.InputEvent):
+  """Capture prompt input."""
+  state = me.state(State)
+  state.input = e.value
+
+
+def on_model_select(e: me.SelectSelectionChangeEvent):
+  """Event to select model."""
+  state = me.state(State)
+  state.selected_model = e.value
+
+
+def on_region_select(e: me.SelectSelectionChangeEvent):
+  """Event to select GCP region (Gemini models only)."""
+  state = me.state(State)
+  state.selected_region = e.value
+
+
+def on_slider_temperature(e: me.SliderValueChangeEvent):
+  """Event to adjust temperature slider value."""
+  state = me.state(State)
+  state.temperature = float(e.value)
+  state.temperature_for_input = state.temperature
+
+
+def on_input_temperature(e: me.InputEvent):
+  """Event to adjust temperature slider value by input."""
+  state = me.state(State)
+  try:
+    temperature = float(e.value)
+    if _TEMPERATURE_MIN <= temperature <= _TEMPERATURE_MAX:
+      state.temperature = temperature
+  except ValueError:
+    pass
+
+
+def on_slider_token_limit(e: me.SliderValueChangeEvent):
+  """Event to adjust token limit slider value."""
+  state = me.state(State)
+  state.token_limit = int(e.value)
+  state.token_limit_for_input = state.token_limit
+
+
+def on_input_token_limit(e: me.InputEvent):
+  """Event to adjust token limit slider value by input."""
+  state = me.state(State)
+  try:
+    token_limit = int(e.value)
+    if _TOKEN_LIMIT_MIN <= token_limit <= _TOKEN_LIMIT_MAX:
+      state.token_limit = token_limit
+  except ValueError:
+    pass
+
+
+def on_stop_sequence_input(e: me.InputEvent):
+  """Capture stop sequence input."""
+  state = me.state(State)
+  state.stop_sequence = e.value
+
+
+def on_click_add_stop_sequence(e: me.ClickEvent):
+  """Save stop sequence. Will create "chip" for the sequence in the input."""
+  state = me.state(State)
+  if state.stop_sequence:
+    state.stop_sequences.append(state.stop_sequence)
+    state.clear_sequence_count += 1
+
+
+def on_click_remove_stop_sequence(e: me.ClickEvent):
+  """Click event that removes the stop sequence that was clicked."""
+  state = me.state(State)
+  index = int(e.key.replace("sequence-", ""))
+  del state.stop_sequences[index]
+
+
+def on_click_tab_header(e: me.ClickEvent):
+  """Open and closes tab content."""
+  state = me.state(State)
+  setattr(state, e.key, not getattr(state, e.key))
+
+
+def on_click_show_code(e: me.ClickEvent):
+  """Opens modal to show generated code for the given model configuration."""
+  state = me.state(State)
+  state.modal_open = True
+
+
+def on_click_modal(e: me.ClickEvent):
+  """Allows modal to be closed."""
+  state = me.state(State)
+  if state.modal_open:
+    state.modal_open = False
+
+
+def on_click_submit(e: me.ClickEvent):
+  """Submits prompt to test model configuration.
+
+  This example returns canned text. A real implementation
+  would call APIs against the given configuration.
+  """
+  state = me.state(State)
+  for line in transform(state.input):
+    state.response += line
+    yield
+
+
+def transform(input: str):
+  """Transform function that returns canned responses."""
+  for line in random.sample(LINES, random.randint(3, len(LINES) - 1)):
+    time.sleep(0.3)
+    yield line + " "
+
+
+LINES = [
+  "Mesop is a Python-based UI framework designed to simplify web UI development for engineers without frontend experience.",
+  "It leverages the power of the Angular web framework and Angular Material components, allowing rapid construction of web demos and internal tools.",
+  "With Mesop, developers can enjoy a fast build-edit-refresh loop thanks to its hot reload feature, making UI tweaks and component integration seamless.",
+  "Deployment is straightforward, utilizing standard HTTP technologies.",
+  "Mesop's component library aims for comprehensive Angular Material component coverage, enhancing UI flexibility and composability.",
+  "It supports custom components for specific use cases, ensuring developers can extend its capabilities to fit their unique requirements.",
+  "Mesop's roadmap includes expanding its component library and simplifying the onboarding processs.",
+]
+
+
+# HELPERS
+
+_GEMINI_CODE_TEXT = """
+```python
+import base64
+import vertexai
+from vertexai.generative_models import GenerativeModel, Part, FinishReason
+import vertexai.preview.generative_models as generative_models
+
+def generate():
+  vertexai.init(project="<YOUR-PROJECT-ID>", location="{region}")
+  model = GenerativeModel("{model}")
+  responses = model.generate_content(
+      [\"\"\"{content}\"\"\"],
+      generation_config=generation_config,
+      safety_settings=safety_settings,
+      stream=True,
+  )
+
+  for response in responses:
+    print(response.text, end="")
+
+
+generation_config = {{
+    "max_output_tokens": {token_limit},
+    "stop_sequences": [{stop_sequences}],
+    "temperature": {temperature},
+    "top_p": 0.95,
+}}
+
+safety_settings = {{
+    generative_models.HarmCategory.HARM_CATEGORY_HATE_SPEECH: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    generative_models.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+}}
+
+generate()
+```
+""".strip()
+
+_GPT_CODE_TEXT = """
+```python
+from openai import OpenAI
+client = OpenAI()
+
+response = client.chat.completions.create(
+  model="{model}",
+  messages=[
+    {{
+      "role": "user",
+      "content": "{content}"
+    }}
+  ],
+  temperature={temperature},
+  max_tokens={token_limit},
+  top_p=1,
+  frequency_penalty=0,
+  presence_penalty=0,
+  stop=[{stop_sequences}]
+)
+```
+""".strip()
+
+
+def make_stop_sequence_str(stop_sequences: list[str]) -> str:
+  """Formats stop sequences for code output (list of strings)."""
+  return ",".join(map(lambda s: f'"{s}"', stop_sequences))
+
+
+# STYLES
+
+
+def _make_modal_background_style(modal_open: bool) -> me.Style:
+  """Makes style for modal background.
+
+  Args:
+    modal_open: Whether the modal is open.
+  """
+  return me.Style(
+    display="block" if modal_open else "none",
+    position="fixed",
+    z_index=1000,
+    width="100%",
+    height="100%",
+    overflow_x="auto",
+    overflow_y="auto",
+    background="rgba(0,0,0,0.4)",
+  )
+
+
+_DEFAULT_PADDING = me.Padding.all(15)
+_DEFAULT_BORDER = me.Border.all(
+  me.BorderSide(color="#e0e0e0", width=1, style="solid")
+)
+
+_STYLE_INPUT_WIDTH = me.Style(width="100%")
+_STYLE_SLIDER_INPUT_BOX = me.Style(display="flex", flex_wrap="wrap")
+_STYLE_SLIDER_WRAP = me.Style(flex_grow=1)
+_STYLE_SLIDER_LABEL = me.Style(padding=me.Padding(bottom=10))
+_STYLE_SLIDER = me.Style(width="90%")
+_STYLE_SLIDER_INPUT = me.Style(width=75)
+
+_STYLE_STOP_SEQUENCE_BOX = me.Style(display="flex")
+_STYLE_STOP_SEQUENCE_WRAP = me.Style(flex_grow=1)
+
+_STYLE_CONTAINER = me.Style(
+  display="grid",
+  grid_template_columns="5fr 2fr",
+  grid_template_rows="auto 5fr",
+  height="100vh",
+)
+
+_STYLE_MAIN_HEADER = me.Style(
+  border=_DEFAULT_BORDER, padding=me.Padding.all(15)
+)
+
+_STYLE_MAIN_COLUMN = me.Style(
+  border=_DEFAULT_BORDER,
+  padding=me.Padding.all(15),
+  overflow_y="scroll",
+)
+
+_STYLE_CONFIG_COLUMN = me.Style(
+  border=_DEFAULT_BORDER,
+  padding=me.Padding.all(15),
+  overflow_y="scroll",
+)
+
+_STYLE_TITLE_BOX = me.Style(display="inline-block")
+
+_STYLE_CONFIG_HEADER = me.Style(
+  border=_DEFAULT_BORDER, padding=me.Padding.all(10)
+)
+
+_STYLE_STOP_SEQUENCE_CHIP = me.Style(margin=me.Margin.all(3))
+
+_STYLE_MODAL_CONTAINER = me.Style(
+  background="#fff",
+  margin=me.Margin.symmetric(vertical="0", horizontal="auto"),
+  width="min(1024px, 100%)",
+  box_sizing="content-box",
+  height="100vh",
+  overflow_y="scroll",
+  box_shadow=("0 3px 1px -2px #0003, 0 2px 2px #00000024, 0 1px 5px #0000001f"),
+)
+
+_STYLE_MODAL_CONTENT = me.Style(margin=me.Margin.all(30))
+
+_STYLE_CODE_BOX = me.Style(
+  font_size=13,
+  margin=me.Margin.symmetric(vertical=10, horizontal=0),
+  padding=me.Padding.all(10),
+  border=me.Border.all(me.BorderSide(color="#e0e0e0", width=1, style="solid")),
+)
+
+<example>
+
+<example>
+import time
+from dataclasses import dataclass
+from typing import Callable, Generator, Literal
+
+import mesop as me
+
+Role = Literal["user", "assistant"]
+
+_ROLE_USER = "user"
+_ROLE_ASSISTANT = "assistant"
+
+_BOT_USER_DEFAULT = "mesop-bot"
+
+_COLOR_BACKGROUND = me.theme_var("background")
+_COLOR_CHAT_BUBBLE_YOU = me.theme_var("surface-container-low")
+_COLOR_CHAT_BUBBLE_BOT = me.theme_var("secondary-container")
+
+_DEFAULT_PADDING = me.Padding.all(20)
+_DEFAULT_BORDER_SIDE = me.BorderSide(
+  width="1px", style="solid", color=me.theme_var("secondary-fixed")
+)
+
+_LABEL_BUTTON = "send"
+_LABEL_BUTTON_IN_PROGRESS = "pending"
+_LABEL_INPUT = "Enter your prompt"
+
+_STYLE_APP_CONTAINER = me.Style(
+  background=_COLOR_BACKGROUND,
+  display="grid",
+  height="100vh",
+  grid_template_columns="repeat(1, 1fr)",
+)
+_STYLE_TITLE = me.Style(padding=me.Padding(left=10))
+_STYLE_CHAT_BOX = me.Style(
+  height="100%",
+  overflow_y="scroll",
+  padding=_DEFAULT_PADDING,
+  margin=me.Margin(bottom=20),
+  border_radius="10px",
+  border=me.Border(
+    left=_DEFAULT_BORDER_SIDE,
+    right=_DEFAULT_BORDER_SIDE,
+    top=_DEFAULT_BORDER_SIDE,
+    bottom=_DEFAULT_BORDER_SIDE,
+  ),
+)
+_STYLE_CHAT_INPUT = me.Style(width="100%")
+_STYLE_CHAT_INPUT_BOX = me.Style(
+  padding=me.Padding(top=30), display="flex", flex_direction="row"
+)
+_STYLE_CHAT_BUTTON = me.Style(margin=me.Margin(top=8, left=8))
+_STYLE_CHAT_BUBBLE_NAME = me.Style(
+  font_weight="bold",
+  font_size="13px",
+  padding=me.Padding(left=15, right=15, bottom=5),
+)
+_STYLE_CHAT_BUBBLE_PLAINTEXT = me.Style(margin=me.Margin.symmetric(vertical=15))
+
+
+def _make_style_chat_ui_container(has_title: bool) -> me.Style:
+  """Generates styles for chat UI container depending on if there is a title or not.
+
+  Args:
+    has_title: Whether the Chat UI is display a title or not.
+  """
+  return me.Style(
+    display="grid",
+    grid_template_columns="repeat(1, 1fr)",
+    grid_template_rows="1fr 14fr 1fr" if has_title else "5fr 1fr",
+    margin=me.Margin.symmetric(vertical=0, horizontal="auto"),
+    width="min(1024px, 100%)",
+    height="100vh",
+    background=_COLOR_BACKGROUND,
+    box_shadow=(
+      "0 3px 1px -2px #0003, 0 2px 2px #00000024, 0 1px 5px #0000001f"
+    ),
+    padding=me.Padding(top=20, left=20, right=20),
+  )
+
+
+def _make_style_chat_bubble_wrapper(role: Role) -> me.Style:
+  """Generates styles for chat bubble position.
+
+  Args:
+    role: Chat bubble alignment depends on the role
+  """
+  align_items = "end" if role == _ROLE_USER else "start"
+  return me.Style(
+    display="flex",
+    flex_direction="column",
+    align_items=align_items,
+  )
+
+
+def _make_chat_bubble_style(role: Role) -> me.Style:
+  """Generates styles for chat bubble.
+
+  Args:
+    role: Chat bubble background color depends on the role
+  """
+  background = (
+    _COLOR_CHAT_BUBBLE_YOU if role == _ROLE_USER else _COLOR_CHAT_BUBBLE_BOT
+  )
+  return me.Style(
+    width="80%",
+    font_size="16px",
+    line_height="1.5",
+    background=background,
+    border_radius="15px",
+    padding=me.Padding(right=15, left=15, bottom=3),
+    margin=me.Margin(bottom=10),
+    border=me.Border(
+      left=_DEFAULT_BORDER_SIDE,
+      right=_DEFAULT_BORDER_SIDE,
+      top=_DEFAULT_BORDER_SIDE,
+      bottom=_DEFAULT_BORDER_SIDE,
+    ),
+  )
+
+
+@dataclass(kw_only=True)
+class ChatMessage:
+  """Chat message metadata."""
+
+  role: Role = "user"
+  content: str = ""
+
+
+@me.stateclass
+class State:
+  input: str
+  output: list[ChatMessage]
+  in_progress: bool = False
+
+
+def on_blur(e: me.InputBlurEvent):
+  state = me.state(State)
+  state.input = e.value
+
+
+def chat(
+  transform: Callable[
+    [str, list[ChatMessage]], Generator[str, None, None] | str
+  ],
+  *,
+  title: str | None = None,
+  bot_user: str = _BOT_USER_DEFAULT,
+):
+  """Creates a simple chat UI which takes in a prompt and chat history and returns a
+  response to the prompt.
+
+  This function creates event handlers for text input and output operations
+  using the provided function `transform` to process the input and generate the output.
+
+  Args:
+    transform: Function that takes in a prompt and chat history and returns a response to the prompt.
+    title: Headline text to display at the top of the UI.
+    bot_user: Name of your bot / assistant.
+  """
+  state = me.state(State)
+
+  def on_click_submit(e: me.ClickEvent):
+    yield from submit()
+
+  def on_input_enter(e: me.InputEnterEvent):
+    state = me.state(State)
+    state.input = e.value
+    yield from submit()
+    me.focus_component(key=f"input-{len(state.output)}")
+    yield
+
+  def submit():
+    state = me.state(State)
+    if state.in_progress or not state.input:
+      return
+    input = state.input
+    state.input = ""
+    yield
+
+    output = state.output
+    if output is None:
+      output = []
+    output.append(ChatMessage(role=_ROLE_USER, content=input))
+    state.in_progress = True
+    yield
+
+    me.scroll_into_view(key="scroll-to")
+    time.sleep(0.15)
+    yield
+
+    start_time = time.time()
+    output_message = transform(input, state.output)
+    assistant_message = ChatMessage(role=_ROLE_ASSISTANT)
+    output.append(assistant_message)
+    state.output = output
+
+    for content in output_message:
+      assistant_message.content += content
+      # TODO: 0.25 is an abitrary choice. In the future, consider making this adjustable.
+      if (time.time() - start_time) >= 0.25:
+        start_time = time.time()
+        yield
+    state.in_progress = False
+    me.focus_component(key=f"input-{len(state.output)}")
+    yield
+
+  def toggle_theme(e: me.ClickEvent):
+    if me.theme_brightness() == "light":
+      me.set_theme_mode("dark")
+    else:
+      me.set_theme_mode("light")
+
+  with me.box(style=_STYLE_APP_CONTAINER):
+    with me.content_button(
+      type="icon",
+      style=me.Style(position="absolute", right=4, top=8),
+      on_click=toggle_theme,
+    ):
+      me.icon("light_mode" if me.theme_brightness() == "dark" else "dark_mode")
+    with me.box(style=_make_style_chat_ui_container(bool(title))):
+      if title:
+        me.text(title, type="headline-5", style=_STYLE_TITLE)
+      with me.box(style=_STYLE_CHAT_BOX):
+        for msg in state.output:
+          with me.box(style=_make_style_chat_bubble_wrapper(msg.role)):
+            if msg.role == _ROLE_ASSISTANT:
+              me.text(bot_user, style=_STYLE_CHAT_BUBBLE_NAME)
+            with me.box(style=_make_chat_bubble_style(msg.role)):
+              if msg.role == _ROLE_USER:
+                me.text(msg.content, style=_STYLE_CHAT_BUBBLE_PLAINTEXT)
+              else:
+                me.markdown(msg.content)
+
+        if state.in_progress:
+          with me.box(key="scroll-to", style=me.Style(height=300)):
+            pass
+
+      with me.box(style=_STYLE_CHAT_INPUT_BOX):
+        with me.box(style=me.Style(flex_grow=1)):
+          me.input(
+            label=_LABEL_INPUT,
+            # Workaround: update key to clear input.
+            key=f"input-{len(state.output)}",
+            on_blur=on_blur,
+            on_enter=on_input_enter,
+            style=_STYLE_CHAT_INPUT,
+          )
+        with me.content_button(
+          color="primary",
+          type="flat",
+          disabled=state.in_progress,
+          on_click=on_click_submit,
+          style=_STYLE_CHAT_BUTTON,
+        ):
+          me.icon(
+            _LABEL_BUTTON_IN_PROGRESS if state.in_progress else _LABEL_BUTTON
+          )
+
+<example>
+
+<example>
+import types
+from typing import Callable, Generator, Literal, cast
+
+import mesop as me
+
+
+@me.stateclass
+class State:
+  input: str
+  output: str
+  textarea_key: int
+
+
+def text_io(
+  transform: Callable[[str], Generator[str, None, None] | str],
+  *,
+  title: str | None = None,
+  transform_mode: Literal["append", "replace"] = "replace",
+):
+  """Deprecated: Use `text_to_text` instead which provides the same functionality
+  with better default settings.
+
+  This function creates event handlers for text input and output operations
+  using the provided transform function to process the input and generate the output.
+
+  Args:
+    transform: Function that takes in a string input and either returns or yields a string output.
+    title: Headline text to display at the top of the UI
+    transform_mode: Specifies how the output should be updated when yielding an output using a generator.
+                  - "append": Concatenates each new piece of text to the existing output.
+                  - "replace": Replaces the existing output with each new piece of text.
+  """
+  print(
+    "\033[93m[warning]\033[0m text_io is deprecated, use text_to_text instead"
+  )
+  text_to_text(transform=transform, title=title, transform_mode=transform_mode)
+
+
+def text_to_text(
+  transform: Callable[[str], Generator[str, None, None] | str],
+  *,
+  title: str | None = None,
+  transform_mode: Literal["append", "replace"] = "append",
+):
+  """Creates a simple UI which takes in a text input and returns a text output.
+
+  This function creates event handlers for text input and output operations
+  using the provided transform function to process the input and generate the output.
+
+  Args:
+    transform: Function that takes in a string input and either returns or yields a string output.
+    title: Headline text to display at the top of the UI
+    transform_mode: Specifies how the output should be updated when yielding an output using a generator.
+                  - "append": Concatenates each new piece of text to the existing output.
+                  - "replace": Replaces the existing output with each new piece of text.
+  """
+
+  def on_input(e: me.InputEvent):
+    state = me.state(State)
+    state.input = e.value
+
+  def on_click_generate(e: me.ClickEvent):
+    state = me.state(State)
+    output = transform(state.input)
+    if isinstance(output, types.GeneratorType):
+      for val in output:
+        if transform_mode == "append":
+          state.output += val
+        elif transform_mode == "replace":
+          state.output = val
+        else:
+          raise ValueError(f"Unsupported transform_mode: {transform_mode}")
+        yield
+    else:
+      # `output` is a str, however type inference doesn't
+      # work w/ generator's unusual ininstance check.
+      state.output = cast(str, output)
+      yield
+
+  def on_click_clear(e: me.ClickEvent):
+    state = me.state(State)
+    state.input = ""
+    state.textarea_key += 1
+
+  with me.box(
+    style=me.Style(
+      background="#f0f4f8",
+      height="100%",
+    )
+  ):
+    with me.box(
+      style=me.Style(
+        background="#f0f4f8",
+        padding=me.Padding(top=24, left=24, right=24, bottom=24),
+        display="flex",
+        flex_direction="column",
+      )
+    ):
+      if title:
+        me.text(title, type="headline-5")
+      with me.box(
+        style=me.Style(
+          margin=me.Margin(left="auto", right="auto"),
+          width="min(1024px, 100%)",
+          gap="24px",
+          flex_grow=1,
+          display="flex",
+          flex_wrap="wrap",
+        )
+      ):
+        box_style = me.Style(
+          flex_basis="max(480px, calc(50% - 48px))",
+          background="#fff",
+          border_radius=12,
+          box_shadow="0 3px 1px -2px #0003, 0 2px 2px #00000024, 0 1px 5px #0000001f",
+          padding=me.Padding(top=16, left=16, right=16, bottom=16),
+          display="flex",
+          flex_direction="column",
+        )
+        with me.box(style=box_style):
+          me.text("Input", style=me.Style(font_weight=500))
+          me.box(style=me.Style(height=16))
+          me.textarea(
+            key=str(me.state(State).textarea_key),
+            on_input=on_input,
+            rows=5,
+            autosize=True,
+            max_rows=15,
+            style=me.Style(width="100%"),
+          )
+          me.box(style=me.Style(height=12))
+          with me.box(
+            style=me.Style(display="flex", justify_content="space-between")
+          ):
+            me.button(
+              "Clear", color="primary", type="stroked", on_click=on_click_clear
+            )
+            me.button(
+              "Generate",
+              color="primary",
+              type="flat",
+              on_click=on_click_generate,
+            )
+        with me.box(style=box_style):
+          me.text("Output", style=me.Style(font_weight=500))
+          me.markdown(me.state(State).output)
+
+<example>
+
+<example>
+from dataclasses import dataclass
+
+import mesop as me
+
+CARD_WIDTH = "320px"
+
+
+@dataclass
+class Resource:
+  title: str
+  description: str
+  github_url: str
+  github_username: str
+  img_url: str
+  app_url: str | None = None
+
+
+@dataclass
+class Section:
+  name: str
+  resources: list[Resource]
+  icon: str
+
+
+SECTIONS = [
+  Section(
+    name="Featured",
+    icon="star",
+    resources=[
+      Resource(
+        title="Mesop Duo Chat",
+        description="Chat with multiple models at once",
+        github_url="https://github.com/wwwillchen/mesop-duo-chat",
+        github_username="wwwillchen",
+        app_url="https://huggingface.co/spaces/wwwillchen/mesop-duo-chat",
+        img_url="https://github.com/user-attachments/assets/107afb9c-f08c-4f27-bd00-e122415c069e",
+      ),
+      Resource(
+        title="Mesop Prompt Tuner",
+        description="Prompt tuning app heavily inspired by Anthropic Console Workbench.",
+        app_url="https://huggingface.co/spaces/richard-to/mesop-prompt-tuner",
+        img_url="https://github.com/user-attachments/assets/2ec6cbfb-c28b-4f60-98f9-34bfca1f6938",
+        github_url="https://github.com/richard-to/mesop-prompt-tuner",
+        github_username="richard-to",
+      ),
+      Resource(
+        title="Meta Llama Agentic System",
+        description="Agentic components of the Llama Stack APIs. Chat UI in Mesop.",
+        img_url="https://github.com/meta-llama/llama-agentic-system/raw/main/demo.png",
+        github_url="https://github.com/meta-llama/llama-agentic-system",
+        github_username="meta-llama",
+      ),
+    ],
+  ),
+  Section(
+    name="Apps",
+    icon="computer",
+    resources=[
+      Resource(
+        title="Mesop App Maker",
+        description="Generate apps with Mesop using LLMs",
+        img_url="https://github.com/user-attachments/assets/1a826d44-c87b-4c79-aeaf-29bc8da3b1c0",
+        github_url="https://github.com/richard-to/mesop-app-maker",
+        github_username="richard-to",
+      ),
+      Resource(
+        title="Mesop Jeopardy",
+        description="A simple jeopardy game built using Mesop",
+        img_url="https://github.com/richard-to/mesop-jeopardy/assets/539889/bc27447d-129f-47ae-b0b1-8f5c546762ed",
+        github_url="https://github.com/richard-to/mesop-jeopardy",
+        github_username="richard-to",
+      ),
+    ],
+  ),
+  Section(
+    name="Web components",
+    icon="code_blocks",
+    resources=[
+      Resource(
+        title="Mesop Markmap",
+        description="Mesop web component for the Markmap library",
+        img_url="https://github.com/user-attachments/assets/6aa40ca3-d98a-42b2-adea-3f49b134445d",
+        github_url="https://github.com/lianggecm/mesop_markmap",
+        app_url="https://colab.research.google.com/drive/17gXlsXPDeo6hcFl1oOyrZ58FTozviN45?usp=sharing",
+        github_username="lianggecm",
+      ),
+    ],
+  ),
+  Section(
+    name="Notebooks",
+    icon="description",
+    resources=[
+      Resource(
+        title="Mesop Getting Started Colab",
+        description="Get started with Mesop in Colab",
+        img_url="https://github.com/user-attachments/assets/37efbe69-ac97-4d26-8fda-d1b7b2b4976a",
+        github_url="https://github.com/google/mesop/blob/main/notebooks/mesop_colab_getting_started.ipynb",
+        app_url="https://colab.research.google.com/github/google/mesop/blob/main/notebooks/mesop_colab_getting_started.ipynb",
+        github_username="google",
+      ),
+      Resource(
+        title="Gemma with Mesop Notebook",
+        description="Use Gemma with Mesop in Colab",
+        img_url="https://github.com/user-attachments/assets/a52ebf01-7f24-469b-9ad9-b271fdb19e37",
+        github_url="https://github.com/google-gemini/gemma-cookbook/blob/main/Gemma/Integrate_with_Mesop.ipynb",
+        app_url="https://colab.research.google.com/github/google-gemini/gemma-cookbook/blob/main/Gemma/Integrate_with_Mesop.ipynb",
+        github_username="google-gemini",
+      ),
+      Resource(
+        title="PaliGemma with Mesop Notebook",
+        description="Use PaliGemma with Mesop in Colab",
+        img_url="https://github.com/user-attachments/assets/8cb456a1-f7be-4187-9a3f-f6b48bde73e9",
+        github_url="https://github.com/google-gemini/gemma-cookbook/blob/main/PaliGemma/Integrate_PaliGemma_with_Mesop.ipynb",
+        app_url="https://colab.research.google.com/github/google-gemini/gemma-cookbook/blob/main/PaliGemma/Integrate_PaliGemma_with_Mesop.ipynb",
+        github_username="google-gemini",
+      ),
+    ],
+  ),
+]
+
+
+def scroll_to_section(e: me.ClickEvent):
+  me.scroll_into_view(key="section-" + e.key)
+  me.state(State).sidenav_menu_open = False
+
+
+def toggle_theme(e: me.ClickEvent):
+  if me.theme_brightness() == "light":
+    me.set_theme_mode("dark")
+  else:
+    me.set_theme_mode("light")
+
+
+def on_load(e: me.LoadEvent):
+  me.set_theme_mode("system")
+
+
+@me.stateclass
+class State:
+  sidenav_menu_open: bool
+
+
+def toggle_menu_button(e: me.ClickEvent):
+  s = me.state(State)
+  s.sidenav_menu_open = not s.sidenav_menu_open
+
+
+def is_mobile():
+  return me.viewport_size().width < 640
+
+
+@me.page(
+  title="Mesop Showcase",
+  on_load=on_load,
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://huggingface.co"],
+  ),
+)
+def page():
+  with me.box(style=me.Style(display="flex", height="100%")):
+    if is_mobile():
+      with me.content_button(
+        type="icon",
+        style=me.Style(top=6, left=8, position="absolute", z_index=9),
+        on_click=toggle_menu_button,
+      ):
+        me.icon("menu")
+      with me.sidenav(
+        opened=me.state(State).sidenav_menu_open,
+        style=me.Style(
+          background=me.theme_var("surface-container-low"),
+        ),
+      ):
+        sidenav()
+    else:
+      sidenav()
+    with me.box(
+      style=me.Style(
+        background=me.theme_var("surface-container-low"),
+        display="flex",
+        flex_direction="column",
+        flex_grow=1,
+      )
+    ):
+      with me.box(
+        style=me.Style(
+          height=240,
+          width="100%",
+          padding=me.Padding.all(16),
+          display="flex",
+          align_items="center",
+        ),
+      ):
+        me.text(
+          "Mesop Showcase",
+          style=me.Style(
+            color=me.theme_var("on-background"),
+            font_size=22,
+            font_weight=500,
+            letter_spacing="0.8px",
+            padding=me.Padding(left=36) if is_mobile() else None,
+          ),
+        )
+
+        with me.content_button(
+          type="icon",
+          style=me.Style(position="absolute", right=4, top=8),
+          on_click=toggle_theme,
+        ):
+          me.icon(
+            "light_mode" if me.theme_brightness() == "dark" else "dark_mode"
+          )
+      with me.box(
+        style=me.Style(
+          background=me.theme_var("background"),
+          flex_grow=1,
+          padding=me.Padding(
+            left=32,
+            right=32,
+            bottom=64,
+          ),
+          border_radius=16,
+          overflow_y="auto",
+        )
+      ):
+        for section in SECTIONS:
+          me.text(
+            section.name,
+            style=me.Style(
+              font_size=18,
+              font_weight=500,
+              padding=me.Padding(top=32, bottom=16),
+            ),
+            key="section-" + section.name,
+          )
+          with me.box(
+            style=me.Style(
+              display="grid",
+              grid_template_columns=f"repeat(auto-fit, minmax({CARD_WIDTH}, 1fr))",
+              gap=24,
+              margin=me.Margin(
+                bottom=24,
+              ),
+            )
+          ):
+            for resource in section.resources:
+              card(resource)
+        with me.box(
+          on_click=lambda e: me.navigate(
+            "https://github.com/google/mesop/issues/new/choose"
+          ),
+          style=me.Style(
+            cursor="pointer",
+            max_width=300,
+            background=me.theme_var("surface-container-lowest"),
+            box_shadow="0 2px 4px rgba(0, 0, 0, 0.1)",
+            # margin=me.Margin.symmetric(horizontal="auto"),
+            display="flex",
+            justify_content="center",
+            align_items="center",
+            border_radius=16,
+            height=120,
+          ),
+        ):
+          me.icon(
+            "add_circle",
+            style=me.Style(
+              color=me.theme_var("primary"),
+              font_size=24,
+              margin=me.Margin(right=4, top=2),
+            ),
+          )
+          me.link(
+            text="Submit your showcase",
+            url="https://github.com/google/mesop/issues/new/choose",
+            style=me.Style(
+              font_size=24,
+              color=me.theme_var("on-background"),
+              text_decoration="none",
+            ),
+          )
+
+
+def sidenav():
+  with me.box(
+    style=me.Style(
+      width=216,
+      height="100%",
+      background=me.theme_var("surface-container-low"),
+      padding=me.Padding.all(16),
+    )
+  ):
+    with me.box(
+      style=me.Style(
+        display="flex", flex_direction="column", margin=me.Margin(top=48)
+      )
+    ):
+      with me.content_button(
+        type="icon",
+        on_click=lambda e: me.navigate("https://google.github.io/mesop/"),
+      ):
+        with me.box(
+          style=me.Style(display="flex", align_items="center", gap=12)
+        ):
+          me.icon("home")
+          me.text(
+            "Home",
+            style=me.Style(
+              font_size=16,
+              margin=me.Margin(bottom=4),
+            ),
+          )
+      with me.content_button(
+        type="icon",
+        on_click=lambda e: me.navigate("https://google.github.io/mesop/demo/"),
+      ):
+        with me.box(
+          style=me.Style(
+            display="flex",
+            align_items="center",
+            gap=8,
+          )
+        ):
+          me.icon("gallery_thumbnail")
+          me.text(
+            "Demos",
+            style=me.Style(
+              font_size=16,
+              margin=me.Margin(bottom=6, left=4),
+            ),
+          )
+    with me.box(
+      style=me.Style(
+        padding=me.Padding(top=24),
+        display="flex",
+        flex_direction="column",
+        gap=8,
+      ),
+    ):
+      me.text(
+        "Categories",
+        style=me.Style(
+          font_weight=500,
+          letter_spacing="0.4px",
+          padding=me.Padding(left=12),
+        ),
+      )
+      for section in SECTIONS:
+        with me.box(
+          style=me.Style(
+            display="flex",
+            align_items="center",
+            cursor="pointer",
+          ),
+          on_click=scroll_to_section,
+          key=section.name,
+        ):
+          with me.content_button(type="icon"):
+            me.icon(section.icon)
+          me.text(section.name)
+      with me.box(
+        style=me.Style(
+          display="flex",
+          align_items="center",
+          cursor="pointer",
+          padding=me.Padding(top=16),
+        ),
+        on_click=lambda e: me.navigate(
+          "https://github.com/google/mesop/issues/new/choose"
+        ),
+      ):
+        with me.content_button(type="icon"):
+          me.icon("add_circle")
+        me.text("Submit your showcase")
+
+
+def card(resource: Resource):
+  with me.box(
+    style=me.Style(
+      display="flex",
+      flex_direction="column",
+      gap=12,
+      box_shadow="0 2px 4px rgba(0, 0, 0, 0.1)",
+      border_radius=16,
+      min_width=CARD_WIDTH,
+      max_width=480,
+      background=me.theme_var("surface-container-lowest"),
+    )
+  ):
+    me.box(
+      style=me.Style(
+        background=f"url('{resource.img_url}') center/cover no-repeat",
+        cursor="pointer",
+        height=200,
+        width="100%",
+        border_radius=16,
+        margin=me.Margin(bottom=8),
+      ),
+      key=resource.app_url or resource.github_url,
+      on_click=lambda e: me.navigate(e.key),
+    )
+    with me.box(
+      style=me.Style(
+        padding=me.Padding(left=16),
+        display="flex",
+        flex_direction="column",
+        gap=8,
+      )
+    ):
+      me.text(resource.title, style=me.Style(font_weight="bold"))
+      with me.box(
+        style=me.Style(
+          display="flex",
+          flex_direction="row",
+          align_items="center",
+          gap=8,
+          cursor="pointer",
+        ),
+        key="https://github.com/" + resource.github_username,
+        on_click=lambda e: me.navigate(e.key),
+      ):
+        me.image(
+          src="https://avatars.githubusercontent.com/"
+          + resource.github_username,
+          style=me.Style(height=32, width=32, border_radius=16),
+        )
+        me.text(
+          resource.github_username,
+          style=me.Style(
+            letter_spacing="0.2px",
+          ),
+        )
+      me.text(resource.description, style=me.Style(height=40))
+    with me.box(
+      style=me.Style(
+        display="flex",
+        justify_content="space-between",
+        padding=me.Padding(left=8, right=8, bottom=8),
+      )
+    ):
+      if resource.github_url:
+        me.button(
+          "Open repo",
+          on_click=lambda e: me.navigate(e.key),
+          key=resource.github_url,
+        )
+      if resource.app_url:
+        me.button(
+          "Open app",
+          on_click=lambda e: me.navigate(e.key),
+          key=resource.app_url,
+        )
+
+<example>
+

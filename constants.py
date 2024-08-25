@@ -21,10 +21,22 @@ HELP_TEXT = """
 
 **Setting up a Mesop Runner instance**
 
-*If running on Hugging Face, you will need to fork the Mesop App Runner space.*
+*If running on Hugging Face, you will need to duplicate the [Mesop App Runner space](https://huggingface.co/spaces/richard-to/mesop-app-runner).*
 
 - Start up an instance of the [Mesop App Runner](https://github.com/richard-to/mesop-app-runner).
     - See [Github repository](https://github.com/richard-to/mesop-app-runner) for more details.
 - Provide the Runner URL to your instance.
 - Provide the Runner Token to your runner instance.
 """.strip()
+
+
+TEMPLATES = {}
+for template in ["default.txt", "basic_chat.txt", "advanced_chat.txt"]:
+  with open(f"templates/{template}") as f:
+    TEMPLATES[template] = f.read()
+
+
+EXAMPLE_CHAT_PROMPTS = []
+for example in ["basic_prompt.txt", "detailed_prompt.txt"]:
+  with open(f"example_prompts/{example}") as f:
+    EXAMPLE_CHAT_PROMPTS.append(f.read())

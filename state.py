@@ -20,11 +20,15 @@ class State:
 
   # Generate prompt panel
   prompt_mode: str = "Generate"
+  prompt_app_type: str = "general"
   prompt_placeholder: str
   prompt: str
 
+  # New template dialog
+  select_index: int
+
   # Prompt history panel
-  prompt_history: list[dict]  # Format: {"prompt", "code", "index", "mode"}
+  prompt_history: list[dict]  # Format: {"prompt", "code", "index", "mode", "app_type"}
 
   # Code editor
   code_placeholder: str = c.EXAMPLE_PROGRAM
@@ -46,6 +50,7 @@ class State:
   show_prompt_history_panel: bool = False
   show_status_snackbar: bool = False
   show_help_dialog: bool = bool(int(os.getenv("MESOP_APP_MAKER_SHOW_HELP", "0")))
+  show_new_dialog: bool = False
 
   # Async action
   async_action_name: str

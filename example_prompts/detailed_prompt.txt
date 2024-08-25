@@ -1,0 +1,8 @@
+Build a chat app that contains the following a features.
+
+1. There should be a header that says "Mesop chat".
+2. This header should be at the very TOP.
+2. There should a chat input should at the TOP, just BELOW the header
+4. The chat messages will go BELOW the chat input.
+5. The chat message styling should use rounded corners and colored background.
+6. There should also be button for dark mode.

@@ -13,6 +13,8 @@ from constants import (
   PROMPT_MODE_REVISE,
   PROMPT_MODE_GENERATE,
   HELP_TEXT,
+  TEMPLATES,
+  EXAMPLE_CHAT_PROMPTS,
 )
 from state import State
 from web_components import code_mirror_editor_component
@@ -71,6 +73,26 @@ def main():
         on_click=handlers.on_hide_component,
       )
 
+  # New file dialog
+  with mex.dialog(state.show_new_dialog):
+    me.text("Select a template", type="headline-6")
+    me.select(
+      label="Template",
+      key="template-selector-" + str(state.select_index),
+      options=[
+        me.SelectOption(label="Default", value="default.txt"),
+        me.SelectOption(label="Basic Chat", value="basic_chat.txt"),
+        me.SelectOption(label="Advanced Chat", value="advanced_chat.txt"),
+      ],
+      on_selection_change=on_select_template,
+    )
+    with mex.dialog_actions():
+      me.button(
+        "Close",
+        key="show_new_dialog",
+        on_click=handlers.on_hide_component,
+      )
+
   # Help dialog
   with mex.dialog(state.show_help_dialog):
     me.text("Usage Instructions", type="headline-6")
@@ -94,6 +116,19 @@ def main():
       selected=state.prompt_mode,
       on_click=on_click_prompt_mode,
     )
+
+    me.select(
+      label="App type",
+      key="prompt_app_type",
+      value=state.prompt_app_type,
+      options=[
+        me.SelectOption(label="General", value="general"),
+        me.SelectOption(label="Chat", value="chat"),
+      ],
+      style=me.Style(width="100%", margin=me.Margin(top=30)),
+      on_selection_change=handlers.on_update_selection,
+    )
+
     me.textarea(
       value=state.prompt_placeholder,
       rows=10,
@@ -105,8 +140,31 @@ def main():
       disabled=state.loading,
       style=me.Style(width="100%", margin=me.Margin(top=15)),
     )
-    with me.content_button(on_click=on_run_prompt, type="flat", disabled=state.loading):
-      me.icon("send")
+
+    with me.tooltip(message="Generate app"):
+      with me.content_button(on_click=on_run_prompt, type="flat", disabled=state.loading):
+        me.icon("send")
+
+    if state.prompt_mode == "Generate" and state.prompt_app_type == "chat":
+      me.text("Example prompts", type="headline-6", style=me.Style(margin=me.Margin(top=15)))
+
+      for index, chat_prompt in enumerate(EXAMPLE_CHAT_PROMPTS):
+        with me.box(
+          key=f"example_prompt-{index}",
+          on_click=on_click_example_prompt,
+          style=me.Style(
+            background=me.theme_var("surface-container"),
+            border=me.Border.all(
+              me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid")
+            ),
+            border_radius=5,
+            cursor="pointer",
+            margin=me.Margin.symmetric(vertical=10),
+            padding=me.Padding.all(10),
+            text_overflow="ellipsis",
+          ),
+        ):
+          me.text(_truncate_text(chat_prompt))
 
   # Prompt history panel
   with mex.panel(
@@ -276,6 +334,13 @@ def main():
               )
             ):
               mex.toolbar_button(
+                icon="add",
+                tooltip="New file",
+                key="show_new_dialog",
+                on_click=handlers.on_show_component,
+              )
+
+              mex.toolbar_button(
                 icon="bolt",
                 tooltip="Generate code",
                 key="show_generate_panel",
@@ -363,6 +428,14 @@ def on_click_prompt_mode(e: me.ClickEvent):
   )
 
 
+def on_click_example_prompt(e: me.ClickEvent):
+  """Populates chat box with example prompt."""
+  state = me.state(State)
+  _, index = e.key.split("-")
+  state.prompt = EXAMPLE_CHAT_PROMPTS[int(index)]
+  state.prompt_placeholder = state.prompt
+
+
 def on_code_input(e: mel.WebEvent):
   """Captures code input into state on blur."""
   state = me.state(State)
@@ -401,6 +474,8 @@ def on_run_code(e: me.ClickEvent):
 def on_run_prompt(e: me.ClickEvent):
   """Generate code from prompt."""
   state = me.state(State)
+  if not state.prompt:
+    return
 
   state.prompt_placeholder = state.prompt
   yield
@@ -413,10 +488,16 @@ def on_run_prompt(e: me.ClickEvent):
 
   if state.prompt_mode == PROMPT_MODE_REVISE:
     state.code = llm.adjust_mesop_app(
-      state.code, state.prompt, model_name=state.model, api_key=state.api_key
+      state.code,
+      state.prompt,
+      model_name=state.model,
+      api_key=state.api_key,
+      app_type=state.prompt_app_type,
     )
   else:
-    state.code = llm.generate_mesop_app(state.prompt, model_name=state.model, api_key=state.api_key)
+    state.code = llm.generate_mesop_app(
+      state.prompt, model_name=state.model, api_key=state.api_key, app_type=state.prompt_app_type
+    )
 
   state.code = state.code.strip().removeprefix("```python").removesuffix("```")
   state.code_placeholder = state.code
@@ -427,7 +508,11 @@ def on_run_prompt(e: me.ClickEvent):
   )
   state.prompt_history.append(
     dict(
-      prompt=state.prompt, code=state.code, index=len(state.prompt_history), mode=state.prompt_mode
+      prompt=state.prompt,
+      code=state.code,
+      index=len(state.prompt_history),
+      mode=state.prompt_mode,
+      app_type=state.prompt_app_type,
     )
   )
 
@@ -438,6 +523,15 @@ def on_run_prompt(e: me.ClickEvent):
   state.show_status_snackbar = True
   state.async_action_name = "hide_status_snackbar"
   yield
+
+
+def on_select_template(e: me.SelectSelectionChangeEvent):
+  """Update editor with selected template"""
+  state = me.state(State)
+  state.code_placeholder = TEMPLATES[e.value]
+  state.code = TEMPLATES[e.value]
+  state.show_new_dialog = False
+  state.select_index += 1
 
 
 def on_show_prompt_history_panel(e: me.ClickEvent):
@@ -466,6 +560,7 @@ def on_click_history_prompt(e: me.ClickEvent):
   state.prompt = state.prompt_placeholder
   state.code_placeholder = prompt_history["code"]
   state.code = state.code_placeholder
+  state.prompt_app_type = prompt_history["app_type"]
   state.prompt_mode = prompt_history["mode"]
   state.show_prompt_history_panel = False
   state.show_generate_panel = True

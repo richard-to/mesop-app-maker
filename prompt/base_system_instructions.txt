@@ -1,0 +1,4787 @@
+You are Python expert with expert knowledge of HTML and CSS layouts.
+
+Today you will be writing Mesop applications. Here is some documentation to help you learn about Mesop. Each page is wrapped in <documentation> tags.
+
+<documentation>
+# Focus component
+
+If you want to focus on a component, you can use `me.focus_component` which focuses the component with the specified key if it is focusable.
+
+## Example
+
+```python
+import mesop as me
+
+
+@me.page(path="/focus_component")
+def page():
+  with me.box(style=me.Style(margin=me.Margin.all(15))):
+    me.select(
+      options=[
+        me.SelectOption(label="Autocomplete", value="autocomplete"),
+        me.SelectOption(label="Checkbox", value="checkbox"),
+        me.SelectOption(label="Input", value="input"),
+        me.SelectOption(label="Link", value="link"),
+        me.SelectOption(label="Radio", value="radio"),
+        me.SelectOption(label="Select", value="select"),
+        me.SelectOption(label="Slider", value="slider"),
+        me.SelectOption(label="Slide Toggle", value="slide_toggle"),
+        me.SelectOption(label="Textarea", value="textarea"),
+        me.SelectOption(label="Uploader", value="uploader"),
+      ],
+      on_selection_change=on_selection_change,
+    )
+
+  me.divider()
+
+  with me.box(
+    style=me.Style(
+      display="grid",
+      gap=5,
+      grid_template_columns="1fr 1fr",
+      margin=me.Margin.all(15),
+    )
+  ):
+    with me.box():
+      me.autocomplete(
+        key="autocomplete",
+        label="Autocomplete",
+        options=[
+          me.AutocompleteOption(label="Test", value="Test"),
+          me.AutocompleteOption(label="Test2", value="Tes2t"),
+        ],
+      )
+
+    with me.box():
+      me.checkbox("Checkbox", key="checkbox")
+
+    with me.box():
+      me.input(key="input", label="Input")
+
+    with me.box():
+      me.link(key="link", text="Test", url="https://google.com")
+
+    with me.box():
+      me.radio(
+        key="radio",
+        options=[
+          me.RadioOption(label="Option 1", value="1"),
+          me.RadioOption(label="Option 2", value="2"),
+        ],
+      )
+
+    with me.box():
+      me.select(
+        key="select",
+        label="Select",
+        options=[
+          me.SelectOption(label="label 1", value="value1"),
+          me.SelectOption(label="label 2", value="value2"),
+          me.SelectOption(label="label 3", value="value3"),
+        ],
+      )
+
+    with me.box():
+      me.slider(key="slider")
+
+    with me.box():
+      me.slide_toggle(key="slide_toggle", label="Slide toggle")
+
+    with me.box():
+      me.textarea(key="textarea", label="Textarea")
+
+    with me.box():
+      me.uploader(
+        key="uploader",
+        label="Upload Image",
+        accepted_file_types=["image/jpeg", "image/png"],
+        type="flat",
+        color="primary",
+        style=me.Style(font_weight="bold"),
+      )
+
+
+def on_selection_change(e: me.SelectSelectionChangeEvent):
+  me.focus_component(key=e.value)
+
+```
+
+## API
+
+### focus_component
+
+```python
+def focus_component(*, key: str) -> None:
+  Focus the component specified by the key
+
+  Args:
+    key: The unique identifier of the component to focus on.
+               This key should be globally unique to prevent unexpected behavior.
+               If multiple components share the same key, the first component
+               instance found in the component tree will be focused on.
+```
+<documentation>
+
+<documentation>
+# Navigate
+
+To navigate to another page, you can use `me.navigate`. This is particularly useful for navigating across a [multi-page](../../guides/multi-pages.md) app.
+
+## Example
+
+```python
+import mesop as me
+
+
+def navigate(event: me.ClickEvent):
+  me.navigate("/about")
+
+
+@me.page(path="/")
+def home():
+  me.text("This is the home page")
+  me.button("navigate to about page", on_click=navigate)
+
+
+@me.page(path="/about")
+def about():
+  me.text("This is the about page")
+
+```
+
+## API
+
+### navigate
+
+```python
+def navigate(url: str, *, query_params: dict[str, typing.Union[str, typing.Sequence[str]]] | mesop.features.query_params.QueryParams | None = None) -> None:
+  Navigates to the given URL.
+
+  Args:
+    url: The URL to navigate to.
+    query_params: A dictionary of query parameters to include in the URL, or `me.query_params`. If not provided, all current query parameters will be removed.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Autocomplete allows the user to enter free text or select from a list of dynamic values
+and is based on the [Angular Material autocomplete component](https://material.angular.io/components/autocomplete/overview).
+
+This components only renders text labels and values.
+
+The autocomplete filters by case-insensitively matching substrings of the option label.
+
+Currently, there is no on blur event with this component since the blur event does not
+get the selected value on the first blur. Due to this ambiguous behavior, the blur event
+has been left out.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=autocomplete" style="height: 200px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.stateclass
+class State:
+  raw_value: str
+  selected_value: str
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/autocomplete",
+)
+def app():
+  state = me.state(State)
+
+  with me.box(style=me.Style(margin=me.Margin.all(15))):
+    me.autocomplete(
+      label="Select state",
+      options=_make_autocomplete_options(),
+      on_selection_change=on_value_change,
+      on_enter=on_value_change,
+      on_input=on_input,
+    )
+
+    if state.selected_value:
+      me.text("Selected: " + state.selected_value)
+
+
+def on_value_change(
+  e: me.AutocompleteEnterEvent | me.AutocompleteSelectionChangeEvent,
+):
+  state = me.state(State)
+  state.selected_value = e.value
+
+
+def on_input(e: me.InputEvent):
+  state = me.state(State)
+  state.raw_value = e.value
+
+
+def _make_autocomplete_options() -> list[me.AutocompleteOptionGroup]:
+  """Creates and filter autocomplete options.
+
+  The states list assumed to be alphabetized and we group by the first letter of the
+  state's name.
+  """
+  states_options_list = []
+  sub_group = None
+  for state in _STATES:
+    if not sub_group or sub_group.label != state[0]:
+      if sub_group:
+        states_options_list.append(sub_group)
+      sub_group = me.AutocompleteOptionGroup(label=state[0], options=[])
+    sub_group.options.append(me.AutocompleteOption(label=state, value=state))
+  if sub_group:
+    states_options_list.append(sub_group)
+  return states_options_list
+
+
+_STATES = [
+  "Alabama",
+  "Alaska",
+  "Arizona",
+  "Arkansas",
+  "California",
+  "Colorado",
+  "Connecticut",
+  "Delaware",
+  "Florida",
+  "Georgia",
+  "Hawaii",
+  "Idaho",
+  "Illinois",
+  "Indiana",
+  "Iowa",
+  "Kansas",
+  "Kentucky",
+  "Louisiana",
+  "Maine",
+  "Maryland",
+  "Massachusetts",
+  "Michigan",
+  "Minnesota",
+  "Mississippi",
+  "Missouri",
+  "Montana",
+  "Nebraska",
+  "Nevada",
+  "New Hampshire",
+  "New Jersey",
+  "New Mexico",
+  "New York",
+  "North Carolina",
+  "North Dakota",
+  "Ohio",
+  "Oklahoma",
+  "Oregon",
+  "Pennsylvania",
+  "Rhode Island",
+  "South Carolina",
+  "South Dakota",
+  "Tennessee",
+  "Texas",
+  "Utah",
+  "Vermont",
+  "Virginia",
+  "Washington",
+  "West Virginia",
+  "Wisconsin",
+  "Wyoming",
+]
+
+```
+
+## API
+
+### autocomplete
+
+```python
+def autocomplete(*, options: Optional[Iterable[mesop.components.autocomplete.autocomplete.AutocompleteOption | mesop.components.autocomplete.autocomplete.AutocompleteOptionGroup]] = None, label: str = '', on_selection_change: Optional[Callable[[mesop.components.autocomplete.autocomplete.AutocompleteSelectionChangeEvent], Any]] = None, on_input: Optional[Callable[[mesop.events.events.InputEvent], Any]] = None, on_enter: Optional[Callable[[mesop.components.autocomplete.autocomplete.AutocompleteEnterEvent], Any]] = None, appearance: Literal['fill', 'outline'] = 'fill', disabled: bool = False, placeholder: str = '', require_selection: bool = False, value: str = '', readonly: bool = False, hide_required_marker: bool = False, color: Literal['primary', 'accent', 'warn'] = 'primary', float_label: Literal['always', 'auto'] = 'auto', subscript_sizing: Literal['fixed', 'dynamic'] = 'fixed', hint_label: str = '', style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  Creates an autocomplete component.
+
+  Args:
+    options: Selectable options from autocomplete.
+    label: Label for input.
+    on_selection_change: Event emitted when the selected value has been changed by the user.
+    on_input: [input](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/input_event) is fired whenever the input has changed (e.g. user types).
+    on_enter: triggers when the browser detects an "Enter" key on a [keyup](https://developer.mozilla.org/en-US/docs/Web/API/Element/keyup_event) native browser event.
+    appearance: The form field appearance style.
+    disabled: Whether it's disabled.
+    placeholder: Placeholder value.
+    value: Initial value.
+    readonly: Whether the element is readonly.
+    hide_required_marker: Whether the required marker should be hidden.
+    color: The color palette for the form field.
+    float_label: Whether the label should always float or float as the user types.
+    subscript_sizing: Whether the form field should reserve space for one line of hint/error text (default) or to have the spacing grow from 0px as needed based on the size of the hint/error content. Note that when using dynamic sizing, layout shifts will occur when hint/error text changes.
+    hint_label: Text for the form field hint.
+    style: Style for input.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### AutocompleteOption
+
+```python
+class AutocompleteOption(*, label: str | None = None, value: str | None = None) -> None:
+  Represents an option in the autocomplete drop down.
+
+  Attributes:
+    label: Content to show for the autocomplete option
+    value: The value of this autocomplete option.
+```
+
+### AutocompleteOptionGroup
+
+```python
+class AutocompleteOptionGroup(*, label: str, options: list[mesop.components.autocomplete.autocomplete.AutocompleteOption]) -> None:
+  Represents an option group to group options in the autocomplete drop down.
+
+  Attributes:
+    label: Group label
+    options: Autocomplete options under this group
+```
+
+### AutocompleteEnterEvent
+
+```python
+class AutocompleteEnterEvent(*, key: str, value: str) -> None:
+  Represents an "Enter" keyboard event on an autocomplete component.
+
+  This will return the raw value if `require_selection` is False.
+
+  If `require_selection` is True, then only a valid selection will be returned. An empty
+  string will be return if not valid selection has been made.
+
+  Attributes:
+    value: Input/selected value.
+    key (str): key of the component that emitted this event.
+```
+
+### AutocompleteSelectionChangeEvent
+
+```python
+class AutocompleteSelectionChangeEvent(*, key: str, value: str) -> None:
+  Represents a selection change event.
+
+  Attributes:
+      value: Selected value.
+      key (str): key of the component that emitted this event.
+```
+
+### InputEvent
+
+```python
+class InputEvent(*, key: str, value: str) -> None:
+  Represents a user input event.
+
+  Attributes:
+      value: Input value.
+      key (str): key of the component that emitted this event.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Badge decorates a UI component and is oftentimes used for unread message count and is based on the [Angular Material badge component](https://material.angular.io/components/badge/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=badge" style="height: 100px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/badge",
+)
+def app():
+  with me.box(
+    style=me.Style(
+      display="block",
+      padding=me.Padding(top=16, right=16, bottom=16, left=16),
+      height=50,
+      width=30,
+    )
+  ):
+    with me.badge(content="1", size="medium"):
+      me.text(text="text with badge")
+
+```
+
+## API
+
+### badge
+
+```python
+def badge(*, color: Literal['primary', 'accent', 'warn'] = 'primary', overlap: bool = False, disabled: bool = False, position: Literal['above after', 'above before', 'below before', 'below after', 'before', 'after', 'above', 'below'] = 'above after', content: str = '', description: str = '', size: Literal['small', 'medium', 'large'] = 'small', hidden: bool = False, key: str | None = None):
+  Creates a Badge component.
+  Badge is a composite component.
+
+  Args:
+    color: The color of the badge. Can be `primary`, `accent`, or `warn`.
+    overlap: Whether the badge should overlap its contents or not
+    disabled: Whether the badge is disabled.
+    position: Position the badge should reside. Accepts any combination of 'above'|'below' and 'before'|'after'
+    content: The content for the badge
+    description: Message used to describe the decorated element via aria-describedby
+    size: Size of the badge. Can be 'small', 'medium', or 'large'.
+    hidden: Whether the badge is hidden.
+    key: The component [key](../components/index.md#component-key).
+```
+<documentation>
+
+<documentation>
+# Multi-Pages
+
+You can define multi-page Mesop applications by using the page feature you learned from [Core Concepts](../getting-started/core-concepts.md).
+
+## Multi-page setup
+
+```python
+import mesop as me
+
+@me.page(path="/1")
+def page1():
+me.text("page 1")
+
+@me.page(path="/2")
+def page2():
+me.text("page 2")
+```
+
+Learn more about page configuration in the [page API doc](../api/page.md).
+
+## Navigation
+
+If you have multiple pages, you will typically want to navigate from one page to another when the user clicks a button. You can use `me.navigate("/to/path")` to navigate to another page.
+
+**Example:**
+
+```python
+import mesop as me
+
+
+def on_click(e: me.ClickEvent):
+  state = me.state(State)
+  state.count += 1
+  me.navigate("/multi_page_nav/page_2")
+
+
+@me.page(path="/multi_page_nav")
+def main_page():
+  me.button("Navigate to Page 2", on_click=on_click)
+
+
+@me.page(path="/multi_page_nav/page_2")
+def page_2():
+  state = me.state(State)
+  me.text(f"Page 2 - count: {state.count}")
+
+
+@me.stateclass
+class State:
+  count: int
+
+```
+
+> Note: you can re-use state across pages. See how the above example uses the `State#count` value across pages.
+<documentation>
+
+<documentation>
+## Overview
+
+Markdown is used to render markdown text.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=markdown_demo"></iframe>
+
+```python
+import mesop as me
+
+SAMPLE_MARKDOWN = """
+# Sample Markdown Document
+
+## Table of Contents
+1. [Headers](#headers)
+2. [Emphasis](#emphasis)
+3. [Lists](#lists)
+4. [Links](#links)
+5. [Code](#code)
+6. [Blockquotes](#blockquotes)
+7. [Tables](#tables)
+8. [Horizontal Rules](#horizontal-rules)
+
+## Headers
+# Header 1
+## Header 2
+### Header 3
+#### Header 4
+##### Header 5
+###### Header 6
+
+## Emphasis
+*Italic text* or _Italic text_
+**Bold text** or __Bold text__
+***Bold and Italic*** or ___Bold and Italic___
+
+## Lists
+
+### Unordered List
+- Item 1
+- Item 2
+    - Subitem 2.1
+    - Subitem 2.2
+
+### Ordered List
+1. First item
+2. Second item
+    1. Subitem 2.1
+    2. Subitem 2.2
+
+## Links
+[Google](https://www.google.com/)
+
+## Code
+Inline `code`
+
+## Table
+
+First Header  | Second Header
+------------- | -------------
+Content Cell { .foo }  | Content Cell { .foo }
+Content Cell { .bar } | Content Cell { .bar }
+"""
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/markdown_demo",
+)
+def app():
+  me.markdown(SAMPLE_MARKDOWN)
+
+```
+
+## API
+
+### markdown
+
+```python
+def markdown(text: str | None = None, *, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  This function creates a markdown.
+
+  Args:
+      text: **Required.** Markdown text
+      style: Style to apply to component. Follows [HTML Element inline style API](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/style).
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Select allows the user to choose from a list of values and is based on the [Angular Material select component](https://material.angular.io/components/select/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=select_demo" style="height: 200px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.stateclass
+class State:
+  selected_values: list[str]
+
+
+def on_selection_change(e: me.SelectSelectionChangeEvent):
+  s = me.state(State)
+  s.selected_values = e.values
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/select_demo",
+)
+def app():
+  me.text(text="Select")
+  me.select(
+    label="Select",
+    options=[
+      me.SelectOption(label="label 1", value="value1"),
+      me.SelectOption(label="label 2", value="value2"),
+      me.SelectOption(label="label 3", value="value3"),
+    ],
+    on_selection_change=on_selection_change,
+    style=me.Style(width=500),
+    multiple=True,
+  )
+  s = me.state(State)
+  me.text(text="Selected values: " + ", ".join(s.selected_values))
+
+```
+
+## API
+
+### select
+
+```python
+def select(*, options: Iterable[mesop.components.select.select.SelectOption] = (), on_selection_change: Optional[Callable[[mesop.components.select.select.SelectSelectionChangeEvent], Any]] = None, on_opened_change: Optional[Callable[[mesop.components.select.select.SelectOpenedChangeEvent], Any]] = None, key: str | None = None, label: str = '', disabled: bool = False, disable_ripple: bool = False, tab_index: int = 0, placeholder: str = '', value: str = '', style: mesop.component_helpers.style.Style | None = None, multiple: bool = False):
+  Creates a Select component.
+
+  Args:
+    options: List of select options.
+    on_selection_change: Event emitted when the selected value has been changed by the user.
+    on_opened_change: Event emitted when the select panel has been toggled.
+    disabled: Whether the select is disabled.
+    disable_ripple: Whether ripples in the select are disabled.
+    multiple: Whether multiple selections are allowed.
+    tab_index: Tab index of the select.
+    placeholder: Placeholder to be shown if no value has been selected.
+    value: Value of the select control.
+    style: Style.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### SelectOption
+
+```python
+class SelectOption(*, label: str | None = None, value: str | None = None) -> None:
+  Represents an option within a select component.
+
+  Attributes:
+      label: The content shown for the select option.
+      value: The value associated with the select option.
+```
+
+### SelectSelectionChangeEvent
+
+```python
+class SelectSelectionChangeEvent(*, key: str, values: list[str]) -> None:
+  Event representing a change in the select component's value(s).
+
+  Attributes:
+      values: New values of the select component after the change.
+      key (str): Key of the component that emitted this event.
+```
+
+::: mesop.components.select.select.SelectOpenedChangeEvent
+<documentation>
+
+<documentation>
+# State Management
+
+State management is a critical element of building interactive apps because it allows you store information about what the user did in a structured way.
+
+## Basic usage
+
+You can register a class using the class decorator `me.stateclass` which is like a dataclass with special powers:
+
+```python
+@me.stateclass
+class State:
+val: str
+```
+
+You can get an instance of the state class inside any of your Mesop component functions by using `me.state`:
+
+```py
+@me.page()
+def page():
+state = me.state(State)
+me.text(state.val)
+```
+
+## Use immutable default values
+
+Similar to [regular dataclasses which disallow mutable default values](https://docs.python.org/3/library/dataclasses.html#mutable-default-values), you need to avoid mutable default values such as list and dict for state classes. Using mutable default values can result in leaking state across sessions which can be a serious privacy issue.
+
+You **MUST** use immutable default values _or_ use dataclasses `field` initializer _or_ not set a default value.
+
+???+ success "Good: immutable default value"
+Setting a default value to an immutable type like str is OK.
+
+```py
+@me.stateclass
+class State:
+a: str = "abc"
+```
+
+???+ failure "Bad: mutable default value"
+
+The following will raise an exception because dataclasses prevents you from using mutable collection types like `list` as the default value because this is a common footgun.
+
+```py
+@me.stateclass
+class State:
+a: list[str] = ["abc"]
+```
+
+If you set a default value to an instance of a custom type, an exception will not be raised, but you will be dangerously sharing the same mutable instance across sessions which could cause a serious privacy issue.
+
+```py
+@me.stateclass
+class State:
+a: MutableClass = MutableClass()
+```
+
+???+ success "Good: default factory"
+
+If you want to set a field to a mutable default value, use default_factory in the `field`  function from the dataclasses module to create a new instance of the mutable default value for each instance of the state class.
+
+```py
+from dataclasses import field
+
+@me.stateclass
+class State:
+a: list[str] = field(default_factory=lambda: ["abc"])
+```
+
+???+ success "Good: no default value"
+
+If you want a default of an empty list, you can just not define a default value and Mesop will automatically define an empty list default value.
+
+For example, if you write the following:
+
+```py
+@me.stateclass
+class State:
+a: list[str]
+```
+
+It's the equivalent of:
+
+```py
+@me.stateclass
+class State:
+a: list[str] = field(default_factory=list)
+```
+
+## How State Works
+
+`me.stateclass` is a class decorator which tells Mesop that this class can be retrieved using the `me.state` method, which will return the state instance for the current user session.
+
+> If you are familiar with the dependency injection pattern, Mesop's stateclass and state API is essentially a minimalist dependency injection system which scopes the state object to the lifetime of a user session.
+
+Under the hood, Mesop is sending the state back and forth between the server and browser client so everything in a state class must be serializable.
+
+## Multiple state classes
+
+You can use multiple classes to store state for the current user session.
+
+Using different state classes for different pages or components can help make your app easier to maintain and more modular.
+
+```py
+@me.stateclass
+class PageAState:
+...
+
+@me.stateclass
+class PageBState:
+...
+
+@me.page(path="/a")
+def page_a():
+state = me.state(PageAState)
+...
+
+@me.page(path="/b")
+def page_b():
+state = me.state(PageBState)
+...
+```
+
+Under the hood, Mesop is managing state classes based on the identity (e.g. module name and class name) of the state class, which means that you could have two state classes named "State", but if they are in different modules, then they will be treated as separate state, which is what you would expect.
+
+## Nested State
+
+You can also have classes inside of a state class as long as everything is serializable:
+
+```python
+class NestedState:
+val: str
+
+@me.stateclass
+class State:
+nested: NestedState
+
+def app():
+state = me.state(State)
+```
+
+> Note: you only need to decorate the top-level state class with `@me.stateclass`. All the nested state classes will automatically be wrapped.
+
+### Nested State and dataclass
+
+Sometimes, you may want to explicitly decorate the nested state class with `dataclass` because in the previous example, you couldn't directly instantiate `NestedState`.
+
+If you wanted to use NestedState as a general dataclass, you can do the following:
+
+```python
+@dataclass
+class NestedState:
+val: str = ""
+
+@me.stateclass
+class State:
+nested: NestedState
+
+def app():
+state = me.state(State)
+```
+
+> Reminder: because dataclasses do not have default values, you will need to explicitly set default values, otherwise Mesop will not be able to instantiate an empty version of the class.
+
+Now, if you have an event handler function, you can do the following:
+
+```py
+def on_click(e):
+response = call_api()
+state = me.state(State)
+state.nested = NestedState(val=response.text)
+```
+
+If you didn't explicitly annotate NestedState as a dataclass, then you would get an error instantiating NestedState because there's no initializer defined.
+
+## Tips
+
+### State performance issues
+
+Take a look at the [performance guide](./performance.md#optimizing-state-size) to learn how to identify and fix State-related performance issues.
+
+## Next steps
+
+Event handlers complement state management by providing a way to update your state in response to user interactions.
+
+<a href="../event-handlers" class="next-step">
+Event handlers
+</a>
+<documentation>
+
+<documentation>
+## Overview
+
+Slide Toggle allows the user to toggle on and off and is based on the [Angular Material slide toggle component](https://material.angular.io/components/slide-toggle/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=slide_toggle" style="height: 100px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.stateclass
+class State:
+  toggled: bool = False
+
+
+def on_change(event: me.SlideToggleChangeEvent):
+  s = me.state(State)
+  s.toggled = not s.toggled
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/slide_toggle",
+)
+def app():
+  me.slide_toggle(label="Slide toggle", on_change=on_change)
+  s = me.state(State)
+  me.text(text=f"Toggled: {s.toggled}")
+
+```
+
+## API
+
+### slide_toggle
+
+```python
+def slide_toggle(label: str | None = None, *, key: str | None = None, label_position: Literal['before', 'after'] = 'after', required: bool = False, color: Optional[Literal['primary', 'accent', 'warn']] = None, disabled: bool = False, disable_ripple: bool = False, tab_index: int = 0, checked: bool = False, hide_icon: bool = False, on_change: Optional[Callable[[mesop.components.slide_toggle.slide_toggle.SlideToggleChangeEvent], Any]] = None):
+  Creates a simple Slide toggle component with a text label.
+
+  Args:
+    label: Text label for slide toggle
+    on_change: An event will be dispatched each time the slide-toggle changes its value.
+    label_position: Whether the label should appear after or before the slide-toggle. Defaults to 'after'.
+    required: Whether the slide-toggle is required.
+    color: Palette color of slide toggle.
+    disabled: Whether the slide toggle is disabled.
+    disable_ripple: Whether the slide toggle has a ripple.
+    tab_index: Tabindex of slide toggle.
+    checked: Whether the slide-toggle element is checked or not.
+    hide_icon: Whether to hide the icon inside of the slide toggle.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### content_slide_toggle
+
+```python
+def content_slide_toggle(*, key: str | None = None, label_position: Literal['before', 'after'] = 'after', required: bool = False, color: Optional[Literal['primary', 'accent', 'warn']] = None, disabled: bool = False, disable_ripple: bool = False, tab_index: int = 0, checked: bool = False, hide_icon: bool = False, on_change: Optional[Callable[[mesop.components.slide_toggle.slide_toggle.SlideToggleChangeEvent], Any]] = None):
+  Creates a Slide toggle component which is a composite component. Typically, you would use a text or icon component as a child.
+
+  Intended for advanced use cases.
+
+
+  Args:
+    on_change: An event will be dispatched each time the slide-toggle changes its value.
+    label_position: Whether the label should appear after or before the slide-toggle. Defaults to 'after'.
+    required: Whether the slide-toggle is required.
+    color: Palette color of slide toggle.
+    disabled: Whether the slide toggle is disabled.
+    disable_ripple: Whether the slide toggle has a ripple.
+    tab_index: Tabindex of slide toggle.
+    checked: Whether the slide-toggle element is checked or not.
+    hide_icon: Whether to hide the icon inside of the slide toggle.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### SlideToggleChangeEvent
+
+```python
+class SlideToggleChangeEvent(*, key: str) -> None:
+  Event triggered when the slide toggle state changes.
+
+  Attributes:
+      key (str): Key of the component that emitted this event.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Mesop provides a Python API that wraps the browser's native CSS [style API](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/style).
+
+## API
+
+### Style
+
+```python
+class Style(*, align_content: Optional[Literal['center', 'start', 'end', 'flex', 'left', 'right', 'space-between', 'space-around', 'space-evenly', 'stretch']] = None, align_items: Optional[Literal['normal', 'stretch', 'center', 'start', 'end', 'flex-start', 'flex-end', 'self-start', 'self-end', 'baseline', 'first baseline', 'last baseline', 'safe center', 'unsafe center', 'inherit', 'initial', 'revert', 'revert-layer', 'unset']] = None, align_self: Optional[Literal['normal', 'stretch', 'center', 'start', 'end', 'flex-start', 'flex-end', 'self-start', 'self-end', 'baseline', 'first baseline', 'last baseline', 'safe center', 'unsafe center', 'inherit', 'initial', 'revert', 'revert-layer', 'unset']] = None, aspect_ratio: str | None = None, background: str | None = None, border: mesop.component_helpers.style.Border | None = None, border_radius: int | str | None = None, bottom: int | str | None = None, box_shadow: str | None = None, box_sizing: str | None = None, color: str | None = None, column_gap: int | str | None = None, columns: int | str | None = None, cursor: str | None = None, display: Optional[Literal['block', 'inline', 'inline-block', 'flex', 'inline-flex', 'grid', 'inline-grid', 'none', 'contents']] = None, flex_basis: str | None = None, flex_direction: Optional[Literal['row', 'row-reverse', 'column', 'column-reverse']] = None, flex_grow: int | None = None, flex_shrink: int | None = None, flex_wrap: Optional[Literal['nowrap', 'wrap', 'wrap-reverse']] = None, font_family: str | None = None, font_size: int | str | None = None, font_style: Optional[Literal['italic', 'normal']] = None, font_weight: Optional[Literal['bold', 'normal', 100, 200, 300, 400, 500, 600, 700, 800, 900]] = None, gap: int | str | None = None, grid_area: str | None = None, grid_auto_columns: str | None = None, grid_auto_flow: str | None = None, grid_auto_rows: str | None = None, grid_column: str | None = None, grid_column_start: int | str | None = None, grid_column_end: int | str | None = None, grid_row: str | None = None, grid_row_start: int | str | None = None, grid_row_end: int | str | None = None, grid_template_areas: list[str] | None = None, grid_template_columns: str | None = None, grid_template_rows: str | None = None, height: int | str | None = None, justify_content: Optional[Literal['center', 'start', 'end', 'flex', 'left', 'right', 'space-between', 'space-around', 'space-evenly', 'stretch']] = None, justify_items: Optional[Literal['normal', 'stretch', 'center', 'start', 'end', 'flex-start', 'flex-end', 'self-start', 'self-end', 'left', 'right', 'baseline', 'first baseline', 'last baseline', 'safe center', 'inherit', 'initial', 'revert', 'revert-layer', 'unset']] = None, justify_self: Optional[Literal['normal', 'stretch', 'center', 'start', 'end', 'flex-start', 'flex-end', 'self-start', 'self-end', 'left', 'right', 'baseline', 'first baseline', 'last baseline', 'safe center', 'inherit', 'initial', 'revert', 'revert-layer', 'unset']] = None, left: int | str | None = None, letter_spacing: int | str | None = None, line_height: str | None = None, margin: mesop.component_helpers.style.Margin | None = None, max_height: int | str | None = None, max_width: int | str | None = None, min_height: int | str | None = None, min_width: int | str | None = None, opacity: float | str | None = None, outline: str | None = None, overflow_wrap: Optional[Literal['normal', 'break-word', 'anywhere']] = None, overflow_x: Optional[Literal['visible', 'hidden', 'clip', 'scroll', 'auto']] = None, overflow_y: Optional[Literal['visible', 'hidden', 'clip', 'scroll', 'auto']] = None, padding: mesop.component_helpers.style.Padding | None = None, place_items: str | None = None, pointer_events: Optional[Literal['auto', 'none', 'bounding-box', 'visiblePainted', 'visibleFill', 'visibleStroke', 'visible', 'painted', 'fill', 'stroke', 'all', 'inherit', 'initial', 'revert', 'revert-layer', 'unset']] = None, position: Optional[Literal['static', 'relative', 'absolute', 'fixed', 'sticky']] = None, right: int | str | None = None, rotate: str | None = None, row_gap: int | str | None = None, text_align: Optional[Literal['start', 'end', 'left', 'right', 'center']] = None, text_decoration: Optional[Literal['underline', 'none']] = None, text_overflow: Optional[Literal['ellipsis', 'clip']] = None, top: int | str | None = None, transform: str | None = None, visibility: Optional[Literal['visible', 'hidden', 'collapse', 'inherit', 'initial', 'revert', 'revert-layer', 'unset']] = None, white_space: Optional[Literal['normal', 'nowrap', 'pre', 'pre-wrap', 'pre-line', 'break-spaces']] = None, width: int | str | None = None, z_index: int | None = None) -> None:
+  Represents the style configuration for a UI component.
+
+  Attributes:
+      align_content: Aligns the flexible container's items on the cross-axis. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/align-content).
+      align_items: Specifies the default alignment for items inside a flexible container. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/align-items).
+      align_self: Overrides a grid or flex item's align-items value. In Grid, it aligns the item inside the grid area. In Flexbox, it aligns the item on the cross axis. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/align-self).
+      aspect_ratio: Specifies the desired width-to-height ratio of a component. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio).
+      background: Sets the background color or image of the component. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/background).
+      border: Defines the border properties for each side of the component. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/border).
+      border_radius: Defines the border radius. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/border-radius).
+      bottom: Helps set vertical position of a positioned element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/bottom).
+      box_shadow: Defines the box shadow. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/box-shadow).
+      box_sizing: Defines the box sizing. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/box-sizing).
+      color: Sets the color of the text inside the component. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/color).
+      column_gap: Sets the gap between columns. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/column-gap).
+      columns: Specifies the number of columns in a multi-column element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/columns).
+      cursor: Sets the mouse cursor. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/cursor).
+      display: Defines the display type of the component. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/display).
+      flex_basis: Specifies the initial length of a flexible item. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/flex-basis).
+      flex_direction: Establishes the main-axis, thus defining the direction flex items are placed in the flex container. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/flex-direction).
+      flex_grow: Defines the ability for a flex item to grow if necessary. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/flex-grow).
+      flex_shrink: Defines the ability for a flex item to shrink if necessary. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/flex-shrink).
+      flex_wrap: Allows flex items to wrap onto multiple lines. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/flex-wrap).
+      font_family: Specifies the font family. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/font-family).
+      font_size: Sets the size of the font. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/font-size).
+      font_style: Specifies the font style for text. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/font-style).
+      font_weight: Sets the weight (or boldness) of the font. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/font-weight).
+      gap: Sets the gap. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/gap).
+      grid_area: Sets the grid area. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-area).
+      grid_auto_columns: CSS property specifies the size of an implicitly-created grid column track or pattern of tracks. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-auto-columns).
+      grid_auto_flow: CSS property controls how the auto-placement algorithm works, specifying exactly how auto-placed items get flowed into the grid. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-auto-flow).
+      grid_auto_rows: CSS property specifies the size of an implicitly-created grid row track or pattern of tracks. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-auto-rows).
+      grid_column: CSS shorthand property specifies a grid item's size and location within a grid column. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-column).
+      grid_column_start: Sets the grid column start. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-column-start).
+      grid_column_end: Sets the grid column end. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-column-end).
+      grid_row: CSS shorthand property specifies a grid item's size and location within a grid row. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-row).
+      grid_row_start: Sets the grid row start. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-row-start).
+      grid_row_end: Sets the grid row end. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-row-end).
+      grid_template_areas: Sets the grid template areas; each element is a row. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-template-areas).
+      grid_template_columns: Sets the grid template columns. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-template-columns).
+      grid_template_rows: Sets the grid template rows. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/grid-template-rows).
+      height: Sets the height of the component. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/height).
+      justify_content: Aligns the flexible container's items on the main-axis. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/justify-content).
+      justify_items: Defines the default justify-self for all items of the box, giving them all a default way of justifying each box along the appropriate axis. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/justify-items).
+      justify_self: Sets the way a box is justified inside its alignment container along the appropriate axis. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/justify-self).
+      left: Helps set horizontal position of a positioned element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/left).
+      letter_spacing: Increases or decreases the space between characters in text. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/letter-spacing).
+      line height: Set the line height (relative to the font size). See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/line-height).
+      margin: Sets the margin space required on each side of an element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/margin).
+      max_height: Sets the maximum height of an element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/max-height).
+      max_width: Sets the maximum width of an element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/max-width).
+      min_height: Sets the minimum height of an element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/min-height).
+      min_width: Sets the minimum width of an element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/min-width).
+      opacity: Sets the opacity property. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/opacity).
+      outline: Sets the outline property. Note: `input` component has default browser stylings. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/outline).
+      overflow_wrap: Specifies how long text can be broken up by new lines to prevent overflowing. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap).
+      overflow_x: Specifies the handling of overflow in the horizontal direction. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-x).
+      overflow_y: Specifies the handling of overflow in the vertical direction. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-y).
+      padding: Sets the padding space required on each side of an element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/padding).
+      place_items: The CSS place-items shorthand property allows you to align items along both the block and inline directions at once. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/place-items).
+      pointer_events: Sets under what circumstances (if any) a particular graphic element can become the target of pointer events. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/pointer-events).
+      position: Specifies the type of positioning method used for an element (static, relative, absolute, fixed, or sticky). See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/position).
+      right: Helps set horizontal position of a positioned element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/right).
+      rotate: Allows you to specify rotation transforms individually and independently of the transform property. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/rotate).
+      row_gap: Sets the gap between rows. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/row-gap).
+      text_align: Specifies the horizontal alignment of text in an element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/text-align).
+      text_decoration: Specifies the decoration added to text. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration).
+      text_overflow: Specifies how overflowed content that is not displayed should be signaled to the user. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow).
+      top: Helps set vertical position of a positioned element. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/top).
+      transform: Lets you rotate, scale, skew, or translate an element. It modifies the coordinate space of the CSS visual formatting model. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/transform).
+      visibility: Sets the visibility property. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/visibility).
+      white_space: Specifies how white space inside an element is handled. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/white-space).
+      width: Sets the width of the component. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/width).
+      z-index: Sets the z-index of the component. See [MDN doc](https://developer.mozilla.org/en-US/docs/Web/CSS/z-index).
+```
+
+### Border
+
+```python
+class Border(*, top: mesop.component_helpers.style.BorderSide | None = None, right: mesop.component_helpers.style.BorderSide | None = None, bottom: mesop.component_helpers.style.BorderSide | None = None, left: mesop.component_helpers.style.BorderSide | None = None) -> None:
+  Defines the border styles for each side of a UI component.
+
+  Attributes:
+      top: Style for the top border.
+      right: Style for the right border.
+      bottom: Style for the bottom border.
+      left: Style for the left border.
+```
+
+### BorderSide
+
+```python
+class BorderSide(*, width: int | str | None = None, color: str | None = None, style: Optional[Literal['none', 'solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'inset', 'outset', 'hidden']] = None) -> None:
+  Represents the style of a single side of a border in a UI component.
+
+  Attributes:
+      width: The width of the border. Can be specified as an integer value representing pixels,
+                                a string with a unit (e.g., '2em'), or None for no width.
+      color: The color of the border, represented as a string. This can be any valid CSS color value,
+                          or None for no color.
+      style: The style of the border. See https://developer.mozilla.org/en-US/docs/Web/CSS/border-style
+```
+
+### Margin
+
+```python
+class Margin(*, top: int | str | None = None, right: int | str | None = None, bottom: int | str | None = None, left: int | str | None = None) -> None:
+  Defines the margin space around a UI component.
+
+  Attributes:
+      top: Top margin (note: `2` is the same as `2px`)
+      right: Right margin
+      bottom: Bottom margin
+      left: Left margin
+```
+
+### Padding
+
+```python
+class Padding(*, top: int | str | None = None, right: int | str | None = None, bottom: int | str | None = None, left: int | str | None = None) -> None:
+  Defines the padding space around a UI component.
+
+  Attributes:
+      top: Top padding (note: `2` is the same as `2px`)
+      right: Right padding
+      bottom: Bottom padding
+      left: Left padding
+```
+<documentation>
+
+<documentation>
+# Web Security
+
+Mesop by default configures its apps to follow a set of web security best practices.
+
+## How
+
+At a high-level, Mesop is built on top of Angular which provides [built-in security protections](https://angular.io/guide/security) and Mesop configures a strict [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP).
+
+Specifics:
+
+- Mesop APIs do not allow arbitrary JavaScript execution in the main execution context. For example, the [markdown](../components/markdown.md) component sanitizes the markdown content and removes active HTML content like JavaScript.
+- Mesop's default Content Security Policy prevents arbitrary JavaScript code from executing on the page unless it passes [Angular's Trusted Types](https://angular.io/guide/security#enforcing-trusted-types) polices.
+
+## Iframe Security
+
+To prevent [clickjacking](https://owasp.org/www-community/attacks/Clickjacking), Mesop apps, when running in prod mode (the default mode used when [deployed](../guides/deployment.md)), do not allow sites from any other origins to iframe the Mesop app.
+
+> Note: pages from the same origin as the Mesop app can always iframe the Mesop app.
+
+If you want to allow a trusted site to iframe your Mesop app, you can explicitly allow list the [sources](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors#sources) which can iframe your app by configuring the security policy for a particular page.
+
+### Example
+
+```py
+import mesop as me
+
+
+@me.page(
+path="/allows_iframed",
+security_policy=me.SecurityPolicy(
+allowed_iframe_parents=["https://google.com"],
+),
+)
+def app():
+me.text("Test CSP")
+```
+
+You can also use wildcards to allow-list multiple subdomains from the same site, such as: `https://*.example.com`.
+
+## API
+
+You can configure the security policy at the page level. See [SecurityPolicy on the Page API docs](../api/page.md#mesop.security.security_policy.SecurityPolicy).
+<documentation>
+
+<documentation>
+## Overview
+
+Sidenav is a sidebar typically used for navigation and is based on the [Angular Material sidenav component](https://material.angular.io/components/sidenav/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=sidenav" style="height: 100px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.stateclass
+class State:
+  sidenav_open: bool
+
+
+def on_click(e: me.ClickEvent):
+  s = me.state(State)
+  s.sidenav_open = not s.sidenav_open
+
+
+SIDENAV_WIDTH = 200
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/sidenav",
+)
+def app():
+  state = me.state(State)
+  with me.sidenav(
+    opened=state.sidenav_open, style=me.Style(width=SIDENAV_WIDTH)
+  ):
+    me.text("Inside sidenav")
+
+  with me.box(
+    style=me.Style(
+      margin=me.Margin(left=SIDENAV_WIDTH if state.sidenav_open else 0),
+    ),
+  ):
+    with me.content_button(on_click=on_click):
+      me.icon("menu")
+    me.markdown("Main content")
+
+```
+
+## API
+
+### sidenav
+
+```python
+def sidenav(*, opened: bool = True, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  This function creates a sidenav.
+
+  Args:
+      opened: A flag to determine if the sidenav is open or closed. Defaults to True.
+      style: An optional Style object to apply custom styles. Defaults to None.
+      key: The component [key](../components/index.md#component-key).
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Text displays text as-is. If you have markdown text, use the [Markdown](./markdown.md) component.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=text"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/text",
+)
+def text():
+  me.text(text="headline-1: Hello, world!", type="headline-1")
+  me.text(text="headline-2: Hello, world!", type="headline-2")
+  me.text(text="headline-3: Hello, world!", type="headline-3")
+  me.text(text="headline-4: Hello, world!", type="headline-4")
+  me.text(text="headline-5: Hello, world!", type="headline-5")
+  me.text(text="headline-6: Hello, world!", type="headline-6")
+  me.text(text="subtitle-1: Hello, world!", type="subtitle-1")
+  me.text(text="subtitle-2: Hello, world!", type="subtitle-2")
+  me.text(text="body-1: Hello, world!", type="body-1")
+  me.text(text="body-2: Hello, world!", type="body-2")
+  me.text(text="caption: Hello, world!", type="caption")
+  me.text(text="button: Hello, world!", type="button")
+
+```
+
+## API
+
+### text
+
+```python
+def text(text: str | None = None, *, type: Optional[Literal['headline-1', 'headline-2', 'headline-3', 'headline-4', 'headline-5', 'headline-6', 'subtitle-1', 'subtitle-2', 'body-1', 'body-2', 'caption', 'button']] = None, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  Create a text component.
+
+  Args:
+      text: The text to display.
+      type: The typography level for the text.
+      style: Style to apply to component. Follows [HTML Element inline style API](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/style).
+      key: The component [key](../components/index.md#component-key).
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Embed allows you to embed/[iframe](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) another web site in your Mesop app.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=embed"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/embed",
+)
+def app():
+  src = "https://google.github.io/mesop/"
+  me.text("Embedding: " + src)
+  me.embed(
+    src=src,
+    style=me.Style(width="100%", height="100%"),
+  )
+
+```
+
+## API
+
+### embed
+
+```python
+def embed(*, src: str, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  This function creates an embed component.
+
+  Args:
+      src: The source URL for the embed content.
+      style: The style to apply to the embed, such as width and height.
+      key: The component [key](../components/index.md#component-key).
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Tooltip is based on the [Angular Material tooltip component](https://material.angular.io/components/tooltip/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=tooltip" style="height: 100px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/tooltip",
+)
+def app():
+  with me.tooltip(message="Tooltip message"):
+    me.text(text="Hello, World")
+
+```
+
+## API
+
+### tooltip
+
+```python
+def tooltip(*, key: str | None = None, position: Literal['left', 'right', 'above', 'below', 'before', 'after'] = 'left', position_at_origin: bool = False, disabled: bool = False, show_delay_ms: int = 0, hide_delay_ms: int = 0, message: str = ''):
+  Creates a Tooltip component.
+  Tooltip is a composite component.
+
+  Args:
+    key: The component [key](../components/index.md#component-key).
+    position: Allows the user to define the position of the tooltip relative to the parent element
+    position_at_origin: Whether tooltip should be relative to the click or touch origin instead of outside the element bounding box.
+    disabled: Disables the display of the tooltip.
+    show_delay_ms: The default delay in ms before showing the tooltip after show is called
+    hide_delay_ms: The default delay in ms before hiding the tooltip after hide is called
+    message: The message to be displayed in the tooltip
+```
+<documentation>
+
+<documentation>
+# Layouts
+
+Mesop takes an unopinionated approach to layout. It does not impose a specific layout on your app so you can build custom layouts. The crux of doing layouts in Mesop is the [Box component](../components/box.md) and using the [Style API](../api/style.md) which are Pythonic wrappers around the CSS layout model.
+
+For most Mesop apps, you will use some combination of these types of layouts:
+
+- [Rows and Columns](#rows-and-columns)
+- [Grids](#grids)
+
+## Common layout examples
+
+To interact with the examples below, open the Mesop Layouts Colab: [![Open In Colab](../assets/colab.svg)](https://colab.research.google.com/github/google/mesop/blob/main/notebooks/mesop_layout_colab.ipynb)
+
+### Rows and Columns
+
+#### Basic Row
+
+```python title="Basic Row"
+def row():
+with me.box(style=me.Style(display="flex", flex_direction="row")):
+me.text("Left")
+me.text("Right")
+```
+
+#### Row with Spacing
+
+```python title="Row with Spacing"
+def row():
+with me.box(style=me.Style(display="flex", flex_direction="row", justify_content="space-around")):
+me.text("Left")
+me.text("Right")
+```
+
+#### Row with Alignment
+
+```python title="Row with Alignment"
+def row():
+with me.box(style=me.Style(display="flex", flex_direction="row", align_items="center")):
+me.box(style=me.Style(background="red", height=50, width="50%"))
+me.box(style=me.Style(background="blue", height=100, width="50%"))
+```
+
+#### Rows and Columns
+
+```python title="Rows and Columns"
+def app():
+with me.box(style=me.Style(display="flex", flex_direction="row", gap=16, height="100%")):
+column(1)
+column(2)
+column(3)
+
+def column(num: int):
+with me.box(style=me.Style(
+flex_grow=1,
+background="#e0e0e0",
+padding=me.Padding.all(16),
+display="flex",
+flex_direction="column",
+)):
+me.box(style=me.Style(background="red", height=100))
+me.box(style=me.Style(background="blue", flex_grow=1))
+```
+
+### Grids
+
+#### Side-by-side Grid
+
+```python title="Side-by-side Grid"
+def grid():
+# 1fr means 1 fraction, so each side is the same size.
+# Try changing one of the 1fr to 2fr and see what it looks like
+with me.box(style=me.Style(display="grid", grid_template_columns="1fr 1fr")):
+me.text("A bunch of text")
+me.text("Some more text")
+```
+
+#### Header Body Footer Grid
+
+```python title="Header Body Footer Grid"
+def app():
+with me.box(style=me.Style(
+display="grid",
+grid_template_rows="auto 1fr auto",
+height="100%"
+)):
+# Header
+with me.box(style=me.Style(
+background="#f0f0f0",
+padding=me.Padding.all(24)
+)):
+me.text("Header")
+
+# Body
+with me.box(style=me.Style(
+padding=me.Padding.all(24),
+overflow_y="auto"
+)):
+me.text("Body Content")
+# Add more body content here
+
+# Footer
+with me.box(style=me.Style(
+background="#f0f0f0",
+padding=me.Padding.all(24)
+)):
+me.text("Footer")
+```
+
+#### Sidebar Layout
+
+```python title="Sidebar Layout"
+def app():
+with me.box(style=me.Style(
+display="grid",
+grid_template_columns="250px 1fr",
+height="100%"
+)):
+# Sidebar
+with me.box(style=me.Style(
+background="#f0f0f0",
+padding=me.Padding.all(24),
+overflow_y="auto"
+)):
+me.text("Sidebar")
+
+# Main content
+with me.box(style=me.Style(
+padding=me.Padding.all(24),
+overflow_y="auto"
+)):
+me.text("Main Content")
+```
+
+#### Responsive UI
+
+This is similar to the Grid Sidebar layout above, except on smaller screens, we will hide the sidebar. Try resizing the browser window and see how the UI changes.
+
+Learn more about responsive UI in the [viewport size docs](../api/viewport-size.md).
+
+```python
+def app():
+is_desktop = me.viewport_size().width > 640
+with me.box(style=me.Style(
+display="grid",
+grid_template_columns="250px 1fr" if is_desktop else "1fr",
+height="100%"
+)):
+if is_desktop:
+# Sidebar
+with me.box(style=me.Style(
+background="#f0f0f0",
+padding=me.Padding.all(24),
+overflow_y="auto"
+)):
+me.text("Sidebar")
+
+# Main content
+with me.box(style=me.Style(
+padding=me.Padding.all(24),
+overflow_y="auto"
+)):
+me.text("Main Content")
+```
+
+## Learn more
+
+For a real-world example of using these types of layouts, check out the Mesop Showcase app:
+
+- [App](https://google.github.io/mesop/showcase/)
+- [Code](https://github.com/google/mesop/blob/main/showcase/main.py)
+
+To learn more about flexbox layouts (rows and columns), check out:
+
+- [CSS Tricks Guide to Flexbox Layouts](https://css-tricks.com/snippets/css/a-guide-to-flexbox/#aa-flexbox-properties)
+- [MDN Flexbox guide](https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Flexbox)
+
+To learn more about grid layouts, check out:
+
+- [CSS Tricks Guide to Grid Layouts](https://css-tricks.com/snippets/css/complete-guide-grid/)
+- [MDN Grid guide](https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Grids)
+<documentation>
+
+<documentation>
+# Components
+
+Please read [Core Concepts](../getting-started/core-concepts.md) before this as it explains the basics of components. This page provides an overview of the different types of components in Mesop.
+
+## Types of components
+
+### Native components
+
+Native components are components implemented using Angular/Javascript. Many of these components wrap [Angular Material components](https://material.angular.io/components/). Other components are simple wrappers around DOM elements.
+
+If you have a use case that's not supported by the existing native components, please [file an issue on GitHub](https://github.com/google/mesop/issues/new) to explain your use case. Given our limited bandwidth, we may not be able to build it soon, but in the future, we will enable Mesop developers to build their own custom native components.
+
+### User-defined components
+
+User-defined components are essentially Python functions which call other components, which can be native components or other user-defined components. It's very easy to write your own components, and it's encouraged to split your app into modular components for better maintainability and reusability.
+
+### Web components
+
+Web components in Mesop are custom HTML elements created using JavaScript and CSS. They enable custom JavaScript execution and bi-directional communication between the browser and server. They can wrap JavaScript libraries and provide stateful client-side interactions. [Learn more about web components](../web-components/index.md).
+
+## Content components
+
+Content components allow you to compose components more flexibly than regular components by accepting child(ren) components. A commonly used content component is the [button](./button.md) component, which accepts a child component which oftentimes the [text](./text.md) component.
+
+Example:
+
+```python
+with me.button():
+me.text("Child")
+```
+
+You can also have multiple content components nested:
+
+```python
+with me.box():
+with me.box():
+me.text("Grand-child")
+```
+
+Sometimes, you may want to define your own content component for better reusability. For example, let's say I want to define a scaffold component which includes a menu positioned on the left and a main content area, I could do the following:
+
+```python
+@me.content_component
+def scaffold(url: str):
+with me.box(style=me.Style(background="white")):
+menu(url=url)
+with me.box(style=me.Style(padding=me.Padding(left=MENU_WIDTH))):
+me.slot()
+```
+
+Now other components can re-use this scaffold component:
+
+```python
+def page1():
+with scaffold(url="/page1"):
+some_content(...)
+```
+
+This is similar to Angular's [Content Projection](https://angular.io/guide/content-projection).
+
+## Component Key
+
+Every native component in Mesop accepts a `key` argument which is a component identifier. This is used by Mesop to tell [Angular whether to reuse the DOM element](https://angular.io/api/core/TrackByFunction#description).
+
+### Resetting a component
+
+You can reset a component to the initial state (e.g. reset a [select](./select.md) component to the unselected state) by giving it a new key value across renders.
+
+For example, you can reset a component by "incrementing" the key:
+
+```py
+class State:
+select_menu_key: int
+
+def reset(event):
+state = me.state(State)
+state.select_menu_key += 1
+
+def main():
+state = me.state(State)
+me.select(key=str(state.select_menu_key),
+options=[me.SelectOption(label="o1", value="o1")])
+me.button(label="Reset", on_click=reset)
+```
+
+### Event handlers
+
+Every Mesop event includes the key of the component which emitted the event. This makes it useful when you want to reuse an event handler for multiple instances of a component:
+
+```py
+def buttons():
+for fruit in ["Apple", "Banana"]:
+me.button(fruit, key=fruit, on_click=on_click)
+
+def on_click(event: me.ClickEvent):
+fruit = event.key
+print("fruit name", fruit)
+```
+
+Because a key is a `str` type, you may sometimes want to store more complex data like a dataclass or a proto object for retrieval in the event handler. To do this, you can serialize and deserialize:
+
+```py
+import json
+from dataclasses import dataclass
+
+@dataclass
+class Person:
+name: str
+
+def buttons():
+for person in [Person(name="Alice"), Person(name="Bob")]:
+# serialize dataclass into str
+key = json.dumps(person.asdict())
+me.button(person.name, key=key, on_click=on_click)
+
+def on_click(event: me.ClickEvent):
+person_dict = json.loads(event.key)
+# modify this for more complex deserialization
+person = Person(**person_dict)
+```
+
+!!! Tip "Use component key for reusable event handler"
+
+This avoids a [subtle issue with using closure variables in event handlers](../guides/interactivity.md#avoid-using-closure-variables-in-event-handler).
+<documentation>
+
+<documentation>
+## Overview
+
+Button is based on the [Angular Material button component](https://material.angular.io/components/button/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=button" style="height: 200px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/button",
+)
+def main():
+  me.text("Button types:", style=me.Style(margin=me.Margin(bottom=12)))
+  with me.box(style=me.Style(display="flex", flex_direction="row", gap=12)):
+    me.button("default")
+    me.button("raised", type="raised")
+    me.button("flat", type="flat")
+    me.button("stroked", type="stroked")
+
+  me.text("Button colors:", style=me.Style(margin=me.Margin(bottom=12)))
+  with me.box(style=me.Style(display="flex", flex_direction="row", gap=12)):
+    me.button("default", type="flat")
+    me.button("primary", color="primary", type="flat")
+    me.button("secondary", color="accent", type="flat")
+    me.button("warn", color="warn", type="flat")
+
+```
+
+## API
+
+### button
+
+```python
+def button(label: str | None = None, *, on_click: Optional[Callable[[mesop.events.events.ClickEvent], Any]] = None, type: Optional[Literal['raised', 'flat', 'stroked']] = None, color: Optional[Literal['primary', 'accent', 'warn']] = None, disable_ripple: bool = False, disabled: bool = False, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  Creates a simple text Button component.
+
+  Args:
+    label: Text label for button
+    on_click: [click](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/click_event) is a native browser event.
+    type: Type of button style to use
+    color: Theme color palette of the button
+    disable_ripple: Whether the ripple effect is disabled or not.
+    disabled: Whether the button is disabled.
+    style: Style for the component.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### content_button
+
+```python
+def content_button(*, on_click: Optional[Callable[[mesop.events.events.ClickEvent], Any]] = None, type: Optional[Literal['raised', 'flat', 'stroked', 'icon']] = None, color: Optional[Literal['primary', 'accent', 'warn']] = None, disable_ripple: bool = False, disabled: bool = False, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  Creates a button component, which is a composite component. Typically, you would use a text or icon component as a child.
+
+  Intended for advanced use cases.
+
+  Args:
+    on_click: [click](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/click_event) is a native browser event.
+    type: Type of button style to use
+    color: Theme color palette of the button
+    disable_ripple: Whether the ripple effect is disabled or not.
+    disabled: Whether the button is disabled.
+    style: Style for the component.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### ClickEvent
+
+```python
+class ClickEvent(*, key: str) -> None:
+  Represents a user click event.
+
+  Attributes:
+      key (str): key of the component that emitted this event.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Slider allows the user to select from a range of values and is based on the [Angular Material slider component](https://material.angular.io/components/slider/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=slider" style="height: 120px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.stateclass
+class State:
+  initial_input_value: str = "50.0"
+  initial_slider_value: float = 50.0
+  slider_value: float = 50.0
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/slider",
+)
+def app():
+  state = me.state(State)
+  with me.box(style=me.Style(display="flex", flex_direction="column")):
+    me.input(
+      label="Slider value", value=state.initial_input_value, on_input=on_input
+    )
+    me.slider(on_value_change=on_value_change, value=state.initial_slider_value)
+    me.text(text=f"Value: {me.state(State).slider_value}")
+
+
+def on_value_change(event: me.SliderValueChangeEvent):
+  state = me.state(State)
+  state.slider_value = event.value
+  state.initial_input_value = str(state.slider_value)
+
+
+def on_input(event: me.InputEvent):
+  state = me.state(State)
+  state.initial_slider_value = float(event.value)
+  state.slider_value = state.initial_slider_value
+
+```
+
+## API
+
+### slider
+
+```python
+def slider(*, on_value_change: Optional[Callable[[mesop.components.slider.slider.SliderValueChangeEvent], Any]] = None, value: float | None = None, min: float = 0, max: float = 100, step: float = 1, color: Literal['primary', 'accent', 'warn'] = 'primary', disabled: bool = False, discrete: bool = False, show_tick_marks: bool = False, disable_ripple: bool = False, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  Creates a Slider component.
+
+  Args:
+    on_value_change: An event will be dispatched each time the slider changes its value.
+    value: Initial value. If updated, the slider will be updated with a new initial value.
+    min: The minimum value that the slider can have.
+    max: The maximum value that the slider can have.
+    step: The values at which the thumb will snap.
+    disabled: Whether the slider is disabled.
+    discrete: Whether the slider displays a numeric value label upon pressing the thumb.
+    show_tick_marks: Whether the slider displays tick marks along the slider track.
+    color: Palette color of the slider.
+    disable_ripple: Whether ripples are disabled in the slider.
+    style: Style for the component.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### SliderValueChangeEvent
+
+```python
+class SliderValueChangeEvent(*, key: str, value: float) -> None:
+  Event triggered when the slider value changes.
+
+  Attributes:
+      value: The new value of the slider after the change.
+      key (str): Key of the component that emitted this event.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Checkbox is a multi-selection form control and is based on the [Angular Material checkbox component](https://material.angular.io/components/checkbox/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=checkbox" style="height: 100px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.stateclass
+class State:
+  checked: bool
+
+
+def on_update(event: me.CheckboxChangeEvent):
+  state = me.state(State)
+  state.checked = event.checked
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/checkbox",
+)
+def app():
+  state = me.state(State)
+  me.checkbox(
+    "Simple checkbox",
+    on_change=on_update,
+  )
+
+  if state.checked:
+    me.text(text="is checked")
+  else:
+    me.text(text="is not checked")
+
+```
+
+## API
+
+### checkbox
+
+```python
+def checkbox(label: str | None = None, *, on_change: Optional[Callable[[mesop.components.checkbox.checkbox.CheckboxChangeEvent], Any]] = None, on_indeterminate_change: Optional[Callable[[mesop.components.checkbox.checkbox.CheckboxIndeterminateChangeEvent], Any]] = None, label_position: Literal['before', 'after'] = 'after', disable_ripple: bool = False, tab_index: int = 0, color: Optional[Literal['primary', 'accent', 'warn']] = None, checked: bool = False, disabled: bool = False, indeterminate: bool = False, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  Creates a simple Checkbox component with a text label.
+
+  Args:
+    label: Text label for checkbox
+    on_change: Event emitted when the checkbox's `checked` value changes.
+    on_indeterminate_change: Event emitted when the checkbox's `indeterminate` value changes.
+    label_position: Whether the label should appear after or before the checkbox. Defaults to 'after'
+    disable_ripple: Whether the checkbox has a ripple.
+    tab_index: Tabindex for the checkbox.
+    color: Palette color of the checkbox.
+    checked: Whether the checkbox is checked.
+    disabled: Whether the checkbox is disabled.
+    indeterminate: Whether the checkbox is indeterminate. This is also known as "mixed" mode and can be used to represent a checkbox with three states, e.g. a checkbox that represents a nested list of checkable items. Note that whenever checkbox is manually clicked, indeterminate is immediately set to false.
+    style: Style for the component.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### content_checkbox
+
+```python
+def content_checkbox(*, on_change: Optional[Callable[[mesop.components.checkbox.checkbox.CheckboxChangeEvent], Any]] = None, on_indeterminate_change: Optional[Callable[[mesop.components.checkbox.checkbox.CheckboxIndeterminateChangeEvent], Any]] = None, label_position: Literal['before', 'after'] = 'after', disable_ripple: bool = False, tab_index: int = 0, color: Optional[Literal['primary', 'accent', 'warn']] = None, checked: bool = False, disabled: bool = False, indeterminate: bool = False, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  Creates a Checkbox component which is a composite component. Typically, you would use a text or icon component as a child.
+
+  Intended for advanced use cases.
+
+  Args:
+    on_change: Event emitted when the checkbox's `checked` value changes.
+    on_indeterminate_change: Event emitted when the checkbox's `indeterminate` value changes.
+    label_position: Whether the label should appear after or before the checkbox. Defaults to 'after'
+    disable_ripple: Whether the checkbox has a ripple.
+    tab_index: Tabindex for the checkbox.
+    color: Palette color of the checkbox.
+    checked: Whether the checkbox is checked.
+    disabled: Whether the checkbox is disabled.
+    indeterminate: Whether the checkbox is indeterminate. This is also known as "mixed" mode and can be used to represent a checkbox with three states, e.g. a checkbox that represents a nested list of checkable items. Note that whenever checkbox is manually clicked, indeterminate is immediately set to false.
+    style: Style for the component.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### CheckboxChangeEvent
+
+```python
+class CheckboxChangeEvent(*, key: str, checked: bool) -> None:
+  Represents a checkbox state change event.
+
+  Attributes:
+      checked: The new checked state of the checkbox.
+      key (str): key of the component that emitted this event.
+```
+
+### CheckboxIndeterminateChangeEvent
+
+```python
+class CheckboxIndeterminateChangeEvent(*, key: str, indeterminate: bool) -> None:
+  Represents a checkbox indeterminate state change event.
+
+  Attributes:
+      checked: The new indeterminate state of the checkbox.
+      key (str): key of the component that emitted this event.
+```
+<documentation>
+
+<documentation>
+# Event Handlers
+
+Event handlers are a core part of Mesop and enables you to handle user interactions by writing Python functions which are called by the Mesop framework when a user event is received.
+
+## How it works
+
+Let's take a look at a simple example of an event handler:
+
+```py title="Simple event handler"
+def counter():
+me.button("Increment", on_click=on_click)
+
+def on_click(event: me.ClickEvent):
+state = me.state(State)
+state.count += 1
+
+@me.stateclass
+class State:
+count: int = 0
+```
+
+Although this example looks simple, there's a lot going on under the hood.
+
+When the counter function is called, it creates an instance of the button component and binds the `on_click` event handler to it. Because components (and the entire Mesop UI) is serialized and sent to the client, we need a way of serializing the event handler so that when the button is clicked, the correct event handler is called on the server.
+
+We don't actually need to serialize the entire event handler, rather we just need to compute a unique id for the event handler function.
+
+Because Mesop has a stateless architecture, we need a way of computing an id for the event handler function that's stable across Python runtimes. For example, the initial page may be rendered by one Python server, but another server may be used to respond to the user event. This stateless architecture allows Mesop apps to be fault-tolerant and enables simple scaling.
+
+## Types of event handlers
+
+### Regular functions
+
+These are the simplest and most common type of event handlers used. It's essentially a regular Python function which is called by the Mesop framework when a user event is received.
+
+```py title="Regular function"
+def on_click(event: me.ClickEvent):
+state = me.state(State)
+state.count += 1
+```
+
+### Generator functions
+
+Python Generator functions are a powerful tool, which allow you to `yield` multiple times in a single event handler. This allows you to render intermediate UI states.
+
+```py title="Generator function"
+def on_click(event: me.ClickEvent):
+state = me.state(State)
+state.count += 1
+yield
+time.sleep(1)
+state.count += 1
+yield
+```
+
+You can learn more about real-world use cases of the generator functions in the [Interactivity guide](./interactivity.md).
+
+???+ info "Always yield at the end of a generator function"
+If you use a `yield` statement in your event handler, then the event handler will be a generator function. You must have a `yield` statement at the end of the event handler (or each return point), otherwise not all of your code will be executed.
+
+### Async generator functions
+
+Python async generator functions allow you to do concurrent work using Python's `async` and `await` language features. If you are using async Python libraries, you can use these types of event handlers.
+
+```py title="Async generator function"
+async def on_click(event: me.ClickEvent):
+state = me.state(State)
+state.count += 1
+yield
+await asyncio.sleep(1)
+state.count += 1
+yield
+```
+
+For a more complete example, please refer to the [Async section of the Interactivity guide](./interactivity.md#async).
+
+???+ info "Always yield at the end of an async generator function"
+Similar to a regular generator function, an async generator function must have a `yield` statement at the end of the event handler (or each return point), otherwise not all of your code will be executed.
+
+## Patterns
+
+### Reusing event handler logic
+
+You can share event handler logic by extracting the common logic into a separate function. For example, you will often want to use the same logic for the `on_enter` event handler for an input component and the `on_click` event handler for a "send" button component.
+
+```py title="Reusing event handler logic"
+def on_enter(event: me.InputEnterEvent):
+state = me.state(State)
+state.value = event.value
+call_api()
+
+def on_click(event: me.ClickEvent):
+# Assumes that state.value has been set by an on_blur event handler
+call_api()
+
+def call_api():
+# Put your common event handler logic here
+pass
+```
+
+If you want to reuse event handler logic between generator functions, you can use the [`yield from`](https://docs.python.org/3/whatsnew/3.3.html#pep-380) syntax. For example, let's say `call_api` in the above example is a generator function. You can use `yield from` to reuse the event handler logic:
+
+```py title="Reusing event handler logic for generator functions"
+def on_enter(event: me.InputEnterEvent):
+state = me.state(State)
+state.value = event.value
+yield from call_api()
+
+def on_click(event: me.ClickEvent):
+yield from call_api()
+
+def call_api():
+# Do initial work
+yield
+# Do more work
+yield
+```
+### Boilerplate-free event handlers
+
+If you're building a form-like UI, it can be tedious to write a separate event handler for each form field. Instead, you can use this pattern which utilizes the `key` attribute that's available in most events and uses Python's built-in `setattr` function to dynamically update the state:
+
+```py title="Boilerplate-free event handlers"
+def app():
+me.input(label="Name", key="name", on_blur=update_state)
+me.input(label="Address", key="address", on_blur=update_state)
+
+@me.stateclass
+class State:
+name: str
+address: str
+
+def update_state(event: me.InputBlurEvent):
+state = me.state(State)
+setattr(state, event.key, event.value)
+```
+
+The downside of this approach is that you lose type safety. Generally, defining a separate event handler, although more verbose, is easier to maintain.
+
+## Troubleshooting
+
+### Avoid using closure variables in event handler
+
+One subtle mistake when building a reusable component is having the event handler use a closure variable, as shown in the following example:
+
+```py title="Bad example of using closure variable"
+@me.component
+def link_component(url: str):
+def on_click(event: me.ClickEvent):
+me.navigate(url)
+return me.button(url, on_click=on_click)
+
+def app():
+link_component("/1")
+link_component("/2")
+```
+
+The problem with this above example is that Mesop only stores the last event handler. This is because each event handler has the same id which means that Mesop cannot differentiate between the two instances of the same event handler.
+
+This means that both instances of the link_component will refer to the last `on_click` instance which references the same `url` closure variable set to `"/2"`. This almost always produces the wrong behavior.
+
+Instead, you will want to use the pattern of relying on the key in the event handler as demonstrated in the following example:
+
+```py title="Good example of using key"
+@me.component
+def link_component(url: str):
+def on_click(event: me.ClickEvent):
+me.navigate(event.key)
+return me.button(url, key=url, on_click=on_click)
+```
+
+For more info on using component keys, please refer to the [Component Key docs](../components/index.md#component-key).
+
+## Next steps
+
+Explore advanced interactivity patterns like streaming and async:
+
+<a href="../interactivity" class="next-step">
+Interactivity
+</a>
+<documentation>
+
+<documentation>
+## Overview
+
+Divider is used to provide visual separation and is based on the [Angular Material divider component](https://material.angular.io/components/divider/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=divider" style="height: 100px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/divider",
+)
+def app():
+  me.text(text="before")
+  me.divider()
+  me.text(text="after")
+
+```
+
+## API
+
+### divider
+
+```python
+def divider(*, key: str | None = None, inset: bool = False):
+  Creates a Divider component.
+
+  Args:
+    key: The component [key](../components/index.md#component-key).
+    inset: Whether the divider is an inset divider.
+```
+<documentation>
+
+<documentation>
+# Core Concepts
+
+This doc will explain the core concepts of building a Mesop app.
+
+## Hello World app
+
+Let's start by creating a simple Hello World app in Mesop:
+
+```python
+import mesop as me
+
+
+@me.page(path="/hello_world")
+def app():
+  me.text("Hello World")
+
+```
+
+This simple example demonstrates a few things:
+
+- Every Mesop app starts with `import mesop as me`. This is the only recommended way to import mesop, otherwise your app may break in the future because you may be relying on internal implementation details.
+- `@me.page` is a function decorator which makes a function a _root component_ for a particular path. If you omit the `path` parameter, this is the equivalent of `@me.page(path="/")`.
+- `app` is a Python function that we will call a __component__ because it's creating Mesop components in the body.
+
+## Components
+
+Components are the building blocks of a Mesop application. A Mesop application is essentially a tree of components.
+
+Let's explain the different kinds of components in Mesop:
+
+- Mesop comes built-in with __native__ components. These are components implemented using Angular/Javascript. Many of these components wrap [Angular Material components](https://material.angular.io/components/).
+- You can also create your own components which are called __user-defined__ components. These are essentially Python functions like `app` in the previous example.
+
+## Counter app
+
+Let's build a more complex app to demonstrate Mesop's interactivity features.
+
+```python
+import mesop as me
+
+
+@me.stateclass
+class State:
+  clicks: int
+
+
+def button_click(event: me.ClickEvent):
+  state = me.state(State)
+  state.clicks += 1
+
+
+@me.page(path="/counter")
+def main():
+  state = me.state(State)
+  me.text(f"Clicks: {state.clicks}")
+  me.button("Increment", on_click=button_click)
+
+```
+
+This app allows the user to click on a button and increment a counter, which is shown to the user as "Clicks: #".
+
+Let's walk through this step-by-step.
+
+### State
+
+The `State` class represents the application state for a particular browser session. This means every user session has its own instance of `State`.
+
+`@me.stateclass` is a class decorator which is similar to Python's [dataclass](https://docs.python.org/3/library/dataclasses.html) but also sets default values based on type hints and allows Mesop to inject the class as shown next.
+
+> Note: Everything in a state class must be serializable because it's sent between the server and browser.
+
+### Event handler
+
+The `button_click` function is an event handler. An event handler has a single parameter, `event`, which can contain a value (this will be shown in the next example). An event handler is responsible for updating state based on the incoming event.
+
+`me.state(State)` retrieves the instance of the state class for the current session.
+
+### Component
+
+Like the previous example, `main` is a Mesop component function which is decorated with `page` to mark it as a root component for a path.
+
+Similar to the event handler, we can retrieve the state in a component function by calling `me.state(State)`.
+
+> Note: it's _not_ safe to mutate state inside a component function. All mutations must be done in an event handler.
+
+Rendering dynamic values in Mesop is simple because you can use standard Python string interpolation use f-strings:
+
+```python
+me.text(f"Clicks: {state.clicks}")
+```
+
+The button component demonstrates connecting an event handler to a component. Whenever a click event is triggered by the component, the registered event handler function is called:
+
+```python
+me.button("Increment", on_click=button_click)
+```
+
+In summary, you've learned how to define a state class, an event handler and wire them together using interactive components.
+
+## What's next
+
+At this point, you've learned all the basics of building a Mesop app. For a step-by-step guide for building a real-world Mesop application, check out the DuoChat Codelab:
+
+<a href="../../codelab" class="next-step">
+DuoChat Codelab
+</a>
+<documentation>
+
+<documentation>
+## Overview
+
+Chat component is a quick way to create a simple chat interface. Chat is part of [Mesop Labs](../guides/labs.md).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=chat"></iframe>
+
+```python
+import random
+import time
+
+import mesop as me
+import mesop.labs as mel
+
+
+def on_load(e: me.LoadEvent):
+  me.set_theme_mode("system")
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/chat",
+  title="Mesop Demo Chat",
+  on_load=on_load,
+)
+def page():
+  mel.chat(transform, title="Mesop Demo Chat", bot_user="Mesop Bot")
+
+
+def transform(input: str, history: list[mel.ChatMessage]):
+  for line in random.sample(LINES, random.randint(3, len(LINES) - 1)):
+    time.sleep(0.3)
+    yield line + " "
+
+
+LINES = [
+  "Mesop is a Python-based UI framework designed to simplify web UI development for engineers without frontend experience.",
+  "It leverages the power of the Angular web framework and Angular Material components, allowing rapid construction of web demos and internal tools.",
+  "With Mesop, developers can enjoy a fast build-edit-refresh loop thanks to its hot reload feature, making UI tweaks and component integration seamless.",
+  "Deployment is straightforward, utilizing standard HTTP technologies.",
+  "Mesop's component library aims for comprehensive Angular Material component coverage, enhancing UI flexibility and composability.",
+  "It supports custom components for specific use cases, ensuring developers can extend its capabilities to fit their unique requirements.",
+  "Mesop's roadmap includes expanding its component library and simplifying the onboarding processs.",
+]
+
+```
+
+## API
+
+### chat
+
+```python
+def chat(transform: Callable[[str, list[mesop.labs.chat.ChatMessage]], Union[Generator[str, NoneType, NoneType], str]], *, title: str | None = None, bot_user: str = 'mesop-bot'):
+  Creates a simple chat UI which takes in a prompt and chat history and returns a
+  response to the prompt.
+
+  This function creates event handlers for text input and output operations
+  using the provided function `transform` to process the input and generate the output.
+
+  Args:
+    transform: Function that takes in a prompt and chat history and returns a response to the prompt.
+    title: Headline text to display at the top of the UI.
+    bot_user: Name of your bot / assistant.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Code is used to render code with syntax highlighting. `code` is a simple wrapper around [markdown](./markdown.md).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=code_demo"></iframe>
+
+```python
+import inspect
+
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/code_demo",
+)
+def code_demo():
+  me.text("Defaults to Python")
+  me.code("a = 123")
+
+  me.text("Can set to other languages")
+  me.code("<div class='a'>foo</div>", language="html")
+
+  me.text("Bigger code block")
+  me.code(inspect.getsource(me))
+
+```
+
+## API
+
+### code
+
+```python
+def code(code: str = '', *, language: str = 'python'):
+  Creates a code component which displays code with syntax highlighting.
+```
+<documentation>
+
+<documentation>
+# Page API
+
+## Overview
+
+Pages allow you to build multi-page applications by decorating Python functions with `me.page`. To learn more, read the see [multi-pages guide](../guides/multi-pages.md).
+
+## Examples
+
+### Simple, 1-page setup
+
+To create a simple Mesop app, you can use `me.page()` like this:
+
+```python
+import mesop as me
+
+@me.page()
+def foo():
+me.text("bar")
+```
+
+> NOTE: If you do not provide a `path` argument, then it defaults to the root path `"/"`.
+
+### Explicit 1-page setup
+
+This is the same as the above example which explicitly sets the route to `"/"`.
+
+```python
+import mesop as me
+
+@me.page(path="/")
+def foo():
+me.text("bar")
+```
+
+## API
+
+### page
+
+```python
+def page(*, path: str = '/', title: str | None = None, stylesheets: list[str] | None = None, security_policy: mesop.security.security_policy.SecurityPolicy | None = None, on_load: Optional[Callable[[mesop.events.events.LoadEvent], Optional[Generator[NoneType, NoneType, NoneType]]]] = None) -> Callable[[Callable[[], NoneType]], Callable[[], NoneType]]:
+  Defines a page in a Mesop application.
+
+  This function is used as a decorator to register a function as a page in a Mesop app.
+
+  Args:
+    path: The URL path for the page. Defaults to "/".
+    title: The title of the page. If None, a default title is generated.
+    stylesheets: List of stylesheet URLs to load.
+    security_policy: The security policy for the page. If None, a default strict security policy is used.
+    on_load: An optional event handler to be called when the page is loaded.
+
+  Returns:
+    A decorator that registers the decorated function as a page.
+```
+
+### SecurityPolicy
+
+```python
+class SecurityPolicy(*, allowed_iframe_parents: list[str] = <factory>, allowed_connect_srcs: list[str] = <factory>, allowed_script_srcs: list[str] = <factory>, dangerously_disable_trusted_types: bool = False) -> None:
+  A class to represent the security policy.
+
+  Attributes:
+    allowed_iframe_parents: A list of allowed iframe parents.
+    allowed_connect_srcs: A list of sites you can connect to, see [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/connect-src).
+    allowed_script_srcs: A list of sites you load scripts from, see [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src).
+    dangerously_disable_trusted_types: A flag to disable trusted types.
+      Highly recommended to not disable trusted types because
+      it's an important web security feature!
+```
+
+### LoadEvent
+
+```python
+class LoadEvent(*, path: str) -> None:
+  Represents a page load event.
+
+  Attributes:
+      path: The path loaded
+```
+
+
+## `on_load`
+
+You may want to do some sort of data-processing when a page is first loaded in a session.
+
+### Simple handler
+
+An `on_load` handler is similar to a regular event handler where you can mutate state.
+
+```python
+import time
+
+import mesop as me
+
+
+def fake_api():
+  yield 1
+  time.sleep(1)
+  yield 2
+  time.sleep(2)
+  yield 3
+
+
+def on_load(e: me.LoadEvent):
+  for val in fake_api():
+    me.state(State).default_values.append(val)
+    yield
+
+
+@me.page(path="/docs/on_load", on_load=on_load)
+def app():
+  me.text("onload")
+  me.text(str(me.state(State).default_values))
+
+
+@me.stateclass
+class State:
+  default_values: list[int]
+
+```
+
+### Generator handler
+
+The `on_load` handler can also be a generator function. This is useful if you need to call a slow or streaming API and want to return intermediate results before all the data has been received.
+
+```python
+import time
+
+import mesop as me
+
+
+def on_load(e: me.LoadEvent):
+  state = me.state(State)
+  state.default_values.append("a")
+  yield
+  time.sleep(1)
+  state.default_values.append("b")
+  yield
+
+
+@me.page(path="/docs/on_load_generator", on_load=on_load)
+def app():
+  me.text("onload")
+  me.text(str(me.state(State).default_values))
+
+
+@me.stateclass
+class State:
+  default_values: list[str]
+
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Image is the equivalent of an [`<img>` HTML element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=image" style="height: 200px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/image",
+)
+def app():
+  me.image(
+    src="https://interactive-examples.mdn.mozilla.net/media/cc0-images/grapefruit-slice-332-332.jpg",
+    alt="Grapefruit",
+    style=me.Style(width="100%"),
+  )
+
+```
+
+## API
+
+### image
+
+```python
+def image(*, src: str | None = None, alt: str | None = None, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  This function creates an image component.
+
+  Args:
+      src: The source URL of the image.
+      alt: The alternative text for the image if it cannot be displayed.
+      style: The style to apply to the image, such as width and height.
+      key: The component [key](../components/index.md#component-key).
+```
+<documentation>
+
+<documentation>
+# Config
+
+## Overview
+
+Mesop is configured at the application level using environment variables.
+
+## Configuration values
+
+### MESOP_STATE_SESSION_BACKEND
+
+Sets the backend to use for caching state data server-side. This makes it so state does
+not have to be sent to the server on every request, reducing bandwidth, especially if
+you have large state objects.
+
+The backend options available at the moment are `memory`, `file`, `sql`, and `firestore`.
+
+#### memory
+
+Users should be careful when using the `memory` backend. Each Mesop process has their
+own RAM, which means cache misses will be common if each server has multiple processes
+and there is no session affinity. In addition, the amount of RAM must be carefully
+specified per instance in accordance with the expected user traffic and state size.
+
+The safest option for using the `memory` backend is to use a single process with a
+good amount of RAM. Python is not the most memory efficient, especially when saving data
+structures such as dicts.
+
+The drawback of being limited to a single process is that requests will take longer to
+process since only one request can be handled at a time. This is especially problematic
+if your application contains long running API calls.
+
+If session affinity is available, you can scale up multiple instances, each running
+single processes.
+
+#### file
+
+Users should be careful when using the `file` backend. Each Mesop instance has their
+own disk, which can be shared among multiple processes. This means cache misses will be
+common if there are multiple instances and no session affinity.
+
+If session affinity is available, you can scale up multiple instances, each running
+multiple Mesop processes. If no session affinity is available, then you can only
+vertically scale a single instance.
+
+The bottleneck with this backend is the disk read/write performance. The amount of disk
+space must also be carefully specified per instance in accordance with the expected user
+traffic and state size.
+
+You will also need to specify a directory to write the state data using
+`MESOP_STATE_SESSION_BACKEND_FILE_BASE_DIR`.
+
+#### SQL
+
+> NOTE: Setting up and configuring databases is out of scope of this document.
+
+This option uses [SqlAlchemy](https://www.sqlalchemy.org/) to store Mesop state sessions
+in supported SQL databases, such as SQLite3 and PostgreSQL. You can also connect to
+hosted options, such as GCP CloudSQL.
+
+If you use SQLite3, you cannot use an in-memory database. It has to be a file. This
+option has similar pros/cons as the `file` backend. Mesop uses the default configuration
+for SQLite3, so the performance will not be optimized for Mesop's usage patterns.
+SQLite3 is OK for development purposes.
+
+Using a database like PostgreSQL will allow for better scalability, both vertically and
+horizontally, since the database is decoupled from the Mesop server.
+
+The drawback here is that this requires knowledge of the database you're using. At
+minimum, you will need to create a database and a database user with the right
+privileges. You will also need to create the database table, which you can create
+with this script. You will need to update the CONNECTION_URI and TABLE_NAME to match
+your database and settings. Also the database user for this script will need privileges
+to create tables on the target database.
+
+```python
+from sqlalchemy import (
+Column,
+DateTime,
+LargeBinary,
+MetaData,
+String,
+Table,
+create_engine,
+)
+
+CONNECTION_URI = "your-database-connection-uri"
+# Update to "your-table-name" if you've overridden `MESOP_STATE_SESSION_BACKEND_SQL_TABLE`.
+TABLE_NAME = "mesop_state_session"
+
+db = create_engine(CONNECTION_URI)
+metadata = MetaData()
+table = Table(
+TABLE_NAME,
+metadata,
+Column("token", String(23), primary_key=True),
+Column("states", LargeBinary, nullable=False),
+Column("created_at", DateTime, nullable=False, index=True),
+)
+
+metadata.create_all(db)
+```
+
+The Mesop server will raise a `sqlalchemy.exc.ProgrammingError` if there is a
+database configuration issue.
+
+By default, Mesop will use the table name `mesop_state_session`, but this can be
+overridden using `MESOP_STATE_SESSION_BACKEND_SQL_TABLE`.
+
+#### GCP Firestore
+
+This options uses [GCP Firestore](https://cloud.google.com/firestore?hl=en) to store
+Mesop state sessions. The `(default)` database has a free tier that can be used for
+for small demo applications with low traffic and moderate amounts of state data.
+
+Since Firestore is decoupled from your Mesop server, it allows you to scale vertically
+and horizontally without the considerations you'd need to make for the `memory` and
+`file` backends.
+
+In order to use Firestore, you will need a Google Cloud account with Firestore enabled.
+Follow the instructions for [creating a Firestore in Native mode database](https://cloud.google.com/firestore/docs/create-database-server-client-library#create_a_in_native_mode_database).
+
+Mesop is configured to use the `(default)` Firestore only. The GCP project is determined
+using the Application Default Credentials (ADC) which is automatically configured for
+you on GCP services, such as Cloud Run.
+
+For local development, you can run this command:
+
+```sh
+gcloud auth application-default login
+```
+
+If you have multiple GCP projects, you may need to update the project associated
+with the ADC:
+
+```sh
+GCP_PROJECT=gcp-project
+gcloud config set project $GCP_PROJECT
+gcloud auth application-default set-quota-project $GCP_PROJECT
+```
+
+Mesop leverages Firestore's [TTL policies](https://firebase.google.com/docs/firestore/ttl)
+to delete stale state sessions. This needs to be set up using the following command,
+otherwise old data will accumulate unnecessarily.
+
+```sh
+COLLECTION_NAME=collection_name
+gcloud firestore fields ttls update expiresAt \
+--collection-group=$COLLECTION_NAME
+```
+
+By default, Mesop will use the collection name `mesop_state_sessions`, but this can be
+overridden using `MESOP_STATE_SESSION_BACKEND_FIRESTORE_COLLECTION`.
+
+**Default:** `none`
+
+### MESOP_STATE_SESSION_BACKEND_FILE_BASE_DIR
+
+This is only used when the `MESOP_STATE_SESSION_BACKEND` is set to `file`. This
+parameter specifies where Mesop will read/write the session state. This means the
+directory must be readable and writeable by the Mesop server processes.
+
+### MESOP_STATE_SESSION_BACKEND_FIRESTORE_COLLECTION
+
+This is only used when the `MESOP_STATE_SESSION_BACKEND` is set to `firestore`. This
+parameter specifies which Firestore collection that Mesop will write state sessions to.
+
+**Default:** `mesop_state_sessions`
+
+### MESOP_STATE_SESSION_BACKEND_SQL_TABLE
+
+This is only used when the `MESOP_STATE_SESSION_BACKEND` is set to `sql`. This
+parameter specifies which SQL database table that Mesop will write state sessions to.
+
+**Default:** `mesop_state_session`
+
+
+## Usage Examples
+
+### One-liner
+
+You can specify the environment variables before the mesop command.
+
+```sh
+MESOP_STATE_SESSION_BACKEND=memory mesop main.py
+```
+
+### Use a .env file
+
+Mesop also supports `.env` files. This is nice since you don't have to keep setting
+the environment variables. In addition, the variables are only set when the application
+is run.
+
+```sh title=".env"
+MESOP_STATE_SESSION_BACKEND=file
+MESOP_STATE_SESSION_BACKEND_FILE_BASE_DIR=/tmp/mesop-sessions
+```
+
+When you run your Mesop app, the .env file will then be read.
+
+```sh
+mesop main.py
+```
+<documentation>
+
+<documentation>
+# Query Params API
+
+## Overview
+
+Query params, also sometimes called query string, provide a way to manage state in the URLs. They are useful for providing deep-links into your Mesop app.
+
+## Example
+
+Here's a simple working example that shows how you can read and write query params.
+
+```py
+@me.page(path="/examples/query_params/page_2")
+def page_2():
+me.text(f"query_params={me.query_params}")
+me.button("Add query param", on_click=add_query_param)
+me.button("Navigate", on_click=navigate)
+
+def add_query_param(e: me.ClickEvent):
+me.query_params["key"] = "value"
+
+def navigate(e: me.ClickEvent):
+me.navigate("/examples/query_params", query_params=me.query_params)
+```
+
+## Usage
+
+You can use query parameters from `me.query_params`, which has a dictionary-like interface, where the key is the parameter name and value is the parameter value.
+
+### Get a query param value
+
+```py
+value: str = me.query_params['param_name']
+```
+This will raise a KeyError if the parameter doesn't exist. You can use `in` to check whether a key exists in `me.query_params`:
+
+```py
+if 'key' in me.query_params:
+print(me.query_params['key'])
+```
+
+???+ NOTE "Repeated query params"
+If a query param key is repeated, then you will get the _first_ value. If you want all the values use `get_all`.
+
+### Get all values
+
+To get all the values for a particular query parameter key, you can use `me.query_params.get_all`, which returns a sequence of parameter values (currently implemented as a `tuple`).
+
+```py
+all_values = me.query_params.get_all('param_name')
+```
+
+### Iterate
+
+```py
+for key in query_params:
+value = query_params[key]
+```
+
+### Set query param
+
+```py
+query_params['new_param'] = 'value'
+```
+
+### Set repeated query param
+
+```py
+query_params['repeated_param'] = ['value1', 'value2']
+```
+
+### Delete
+
+```py
+del query_params['param_to_delete']
+```
+
+## Patterns
+
+### Navigate with existing query params
+
+Here's an example of how to navigate to a new page with query parameters:
+
+```py
+def click_navigate_button(e: me.ClickEvent):
+me.query_params['q'] = "value"
+me.navigate('/search', query_params=me.query_params)
+```
+
+### Navigate with only new query params
+
+You can also navigate by passing in a dictionary to `query_params` parameter for `me.navigate` if you do _not_ want to keep the existing query parameters.
+
+```py
+def click_navigate_button(e: me.ClickEvent):
+me.navigate('/search', query_params={"q": "value})
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Video is the equivalent of an [`<video>` HTML element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video). Video displays the browser's native video controls.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=video" style="height: 300px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/video",
+)
+def app():
+  me.video(
+    src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm",
+    style=me.Style(height=300, width=300),
+  )
+
+```
+
+## API
+
+### video
+
+```python
+def video(*, src: str, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  Creates a video.
+
+  Args:
+      src: URL of the video source
+      style: The style to apply to the image, such as width and height.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Progress Bar is used to indicate something is in progress and is based on the [Angular Material progress bar component](https://material.angular.io/components/progress-bar/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=progress_bar" style="height: 60px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/progress_bar",
+)
+def app():
+  me.text("Default progress bar")
+  me.progress_bar()
+
+```
+
+## API
+
+### progress_bar
+
+```python
+def progress_bar(*, key: str | None = None, color: Optional[Literal['primary', 'accent', 'warn']] = None, value: float = 0, buffer_value: float = 0, mode: Literal['determinate', 'indeterminate', 'buffer', 'query'] = 'indeterminate', on_animation_end: Optional[Callable[[mesop.components.progress_bar.progress_bar.ProgressBarAnimationEndEvent], Any]] = None):
+  Creates a Progress bar component.
+
+  Args:
+    key: The component [key](../components/index.md#component-key).
+    color: Theme palette color of the progress bar.
+    value: Value of the progress bar. Defaults to zero. Mirrored to aria-valuenow.
+    buffer_value: Buffer value of the progress bar. Defaults to zero.
+    mode: Mode of the progress bar. Input must be one of these values: determinate, indeterminate, buffer, query, defaults to 'determinate'. Mirrored to mode attribute.
+    on_animation_end: Event emitted when animation of the primary progress bar completes. This event will not be emitted when animations are disabled, nor will it be emitted for modes with continuous animations (indeterminate and query).
+```
+
+::: mesop.components.progress_bar.progress_bar.ProgressBarAnimationEndEvent
+<documentation>
+
+<documentation>
+# Viewport size
+
+## Overview
+The viewport size API allows you to access the current viewport size. This can be useful for creating responsive and adaptive designs that are suitable for the user's screen size.
+
+## Examples
+
+### Responsive Design
+
+Responsive design is having a single fluid layout that adapts to all screen sizes.
+
+You can use the viewport size to dynamically set the property of a style. This can be useful if you want to fit two boxes in a row for larger screens (e.g. desktop) and a single box for smaller screens (e.g. mobile) as shown in the example below:
+
+```py
+import mesop as me
+
+@me.page()
+def page():
+if me.viewport_size().width > 640:
+width = me.viewport_size().width / 2
+else:
+width = me.viewport_size().width
+for i in range(8):
+me.box(style=me.Style(width=width))
+```
+
+> Tip: Responsive design tends to take less work and is usually a good starting point.
+
+### Adaptive Design
+
+Adaptive design is having multiple fixed layouts for specific device categories at specific breakpoints, typically viewport width.
+
+For example, oftentimes you will hide the nav component on a mobile device and instead show a hamburger menu, while for a larger device you will always show the nav component on the left side.
+
+```py
+import mesop as me
+
+@me.page()
+def page():
+if me.viewport_size().width > 480:
+nav_component()
+body()
+else:
+body(show_menu_button=True)
+```
+
+> Tip: Adaptive design tends to take more work and is best for optimizing complex mobile and desktop experiences.
+
+## API
+
+### viewport_size
+
+```python
+def viewport_size() -> mesop.features.viewport_size.Size:
+  Returns the current viewport size.
+
+  Returns:
+      Size: The current viewport size.
+```
+
+
+### Size
+
+```python
+class Size(*, width: int, height: int) -> None:
+  Attributes:
+      width: The width of the viewport in pixels.
+      height: The height of the viewport in pixels.
+```
+<documentation>
+
+<documentation>
+# Theming
+
+Mesop has early-stage support for theming so you can support light theme and dark theme in a Mesop application.
+
+## Dark Theming
+
+For an actual example of using Mesop's theming API to support light theme and dark theme, we will look at the labs [chat component](../components/chat.md) which itself is written all in Python built on top of lower-level Mesop components.
+
+### Theme toggle button
+
+Inside the chat component, we've defined an icon button to toggle the theme so users can switch between light and dark theme:
+
+```py
+def toggle_theme(e: me.ClickEvent):
+if me.theme_brightness() == "light":
+me.set_theme_mode("dark")
+else:
+me.set_theme_mode("light")
+
+with me.content_button(
+type="icon",
+style=me.Style(position="absolute", right=0),
+on_click=toggle_theme,
+):
+me.icon("light_mode" if me.theme_brightness() == "dark" else "dark_mode")
+```
+
+### Using theme colors
+
+You could define custom style logic to explicitly set the color based on the theme:
+
+```py
+def container():
+me.box(
+style=me.Style(
+background="white" if me.theme_brightness() == "light" else "black"
+)
+)
+```
+
+But this would be pretty tedious, so you can use theme variables like this:
+
+
+```py
+def container():
+me.box(style=me.Style(background=me.theme_var("background")))
+```
+
+This will use the appropriate background color for light theme and dark theme.
+
+### Default theme mode
+
+Finally, we want to use the default theme mode to "system" which means we will use the user's preferences for whether they want dark theme or light theme. For many users, their operating systems will automatically switch to dark theme during night time.
+
+> Note: Mesop currently defaults to light theme mode but will eventually default to system theme mode in the future.
+
+On our demo page with the chat component, we have a page [on_load](../api/page.md#on_load) event handler defined like this:
+
+```py
+def on_load(e: me.LoadEvent):
+me.set_theme_mode("system")
+```
+
+## Theme Density
+
+You can set the visual density of the Material components. By default, Mesop uses the least visually dense setting, i.e.
+
+```py
+me.set_theme_density(0) # 0 is the least dense
+```
+
+You can configure the density as an integer from 0 (least dense) to -4 (most dense). For example, if you want a medium-dense UI, you can do the following:
+
+```py
+def on_load(e: me.LoadEvent):
+me.set_theme_density(-2) # -2 is more dense than the default
+
+
+@me.page(on_load=on_load)
+def page():
+...
+```
+
+## API
+
+### set_theme_density
+
+```python
+def set_theme_density(density: Literal[0, -1, -2, -3, -4]) -> None:
+  Sets the theme density for the Material components in the application.
+  A higher density (more negative value) results in a more compact UI layout.
+
+  Args:
+      density: The desired theme density. It can be 0 (least dense),
+                              -1, -2, -3, or -4 (most dense).
+```
+
+### set_theme_mode
+
+```python
+def set_theme_mode(theme_mode: Literal['system', 'light', 'dark']) -> None:
+  Sets the theme mode for the application.
+
+  Args:
+      theme_mode: The desired theme mode. It can be "system", "light", or "dark".
+```
+
+### theme_brightness
+
+```python
+def theme_brightness() -> Literal['light', 'dark']:
+  Returns the current theme brightness.
+
+  This function checks the current theme being used by the application
+  and returns whether it is "light" or "dark".
+```
+
+### theme_var
+
+```python
+def theme_var(var: Literal['background', 'error', 'error-container', 'inverse-on-surface', 'inverse-primary', 'inverse-surface', 'on-background', 'on-error', 'on-error-container', 'on-primary', 'on-primary-container', 'on-primary-fixed', 'on-primary-fixed-variant', 'on-secondary', 'on-secondary-container', 'on-secondary-fixed', 'on-secondary-fixed-variant', 'on-surface', 'on-surface-variant', 'on-tertiary', 'on-tertiary-container', 'on-tertiary-fixed', 'on-tertiary-fixed-variant', 'outline', 'outline-variant', 'primary', 'primary-container', 'primary-fixed', 'primary-fixed-dim', 'scrim', 'secondary', 'secondary-container', 'secondary-fixed', 'secondary-fixed-dim', 'shadow', 'surface', 'surface-bright', 'surface-container', 'surface-container-high', 'surface-container-highest', 'surface-container-low', 'surface-container-lowest', 'surface-dim', 'surface-tint', 'surface-variant', 'tertiary', 'tertiary-container', 'tertiary-fixed', 'tertiary-fixed-dim'], /) -> str:
+  Returns the CSS variable for a given theme variable.
+
+  Args:
+      var: The theme variable name. See the [Material Design docs](https://m3.material.io/styles/color/static/baseline#690f18cd-d40f-4158-a358-4cfdb3a32768) for more information about the colors available.
+```
+
+### ThemeVar
+
+attr ThemeVar = typing.Literal['background', 'error', 'error-container', 'inverse-on-surface', 'inverse-primary', 'inverse-surface', 'on-background', 'on-error', 'on-error-container', 'on-primary', 'on-primary-container', 'on-primary-fixed', 'on-primary-fixed-variant', 'on-secondary', 'on-secondary-container', 'on-secondary-fixed', 'on-secondary-fixed-variant', 'on-surface', 'on-surface-variant', 'on-tertiary', 'on-tertiary-container', 'on-tertiary-fixed', 'on-tertiary-fixed-variant', 'outline', 'outline-variant', 'primary', 'primary-container', 'primary-fixed', 'primary-fixed-dim', 'scrim', 'secondary', 'secondary-container', 'secondary-fixed', 'secondary-fixed-dim', 'shadow', 'surface', 'surface-bright', 'surface-container', 'surface-container-high', 'surface-container-highest', 'surface-container-low', 'surface-container-lowest', 'surface-dim', 'surface-tint', 'surface-variant', 'tertiary', 'tertiary-container', 'tertiary-fixed', 'tertiary-fixed-dim']
+<documentation>
+
+<documentation>
+## Overview
+
+The HTML component allows you to add custom HTML to your Mesop app.
+
+There are two modes for rendering HTML components:
+
+- `sanitized` (default), where the HTML is [sanitized by Angular](https://angular.dev/best-practices/security#sanitization-example) to remove potentially unsafe code like `<script>` and `<style>` for web security reasons.
+- `sandboxed`, which allows rendering of `<script>` and `<style>` HTML content by using an iframe sandbox.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=html_demo" style="height: 200px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(path="/html_demo")
+def app():
+  me.text("Sanitized HTML")
+  me.html(
+    """
+Custom HTML
+<a href="https://google.github.io/mesop/" target="_blank">mesop</a>
+""",
+    mode="sanitized",
+  )
+  with me.box(style=me.Style(margin=me.Margin.symmetric(vertical=24))):
+    me.divider()
+  me.text("Sandboxed HTML")
+  me.html(
+    "hi<script>document.body.innerHTML = 'iamsandboxed'; </script>",
+    mode="sandboxed",
+  )
+
+```
+
+## API
+
+### html
+
+```python
+def html(html: str = '', *, mode: Optional[Literal['sanitized', 'sandboxed']] = None, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  This function renders custom HTML in a secure way.
+
+  Args:
+      html: The HTML content to be rendered.
+      mode: Determines how the HTML is rendered. Mode can be either "sanitized" or "sandboxed".
+          If "sanitized" then potentially dangerous content like `<script>` and `<style>` are
+          stripped out. If "sandboxed", then all content is allowed, but rendered in an iframe for isolation.
+      style: The style to apply to the embed, such as width and height.
+      key: The component [key](../components/index.md#component-key).
+```
+<documentation>
+
+<documentation>
+# Scroll into view
+
+If you want to scroll a component into the viewport, you can use `me.scroll_into_view` which scrolls the component with the specified key into the viewport.
+
+## Example
+
+```python
+import time
+
+import mesop as me
+
+
+@me.stateclass
+class State:
+  more_lines: int = 0
+
+
+@me.page(path="/scroll_into_view")
+def app():
+  me.button("Scroll to middle line", on_click=scroll_to_middle)
+  me.button("Scroll to bottom line", on_click=scroll_to_bottom)
+  me.button(
+    "Scroll to bottom line & generate lines",
+    on_click=scroll_to_bottom_and_generate_lines,
+  )
+  for _ in range(100):
+    me.text("Filler line")
+  me.text("middle_line", key="middle_line")
+  for _ in range(100):
+    me.text("Filler line")
+  me.text("bottom_line", key="bottom_line")
+  for _ in range(me.state(State).more_lines):
+    me.text("More lines")
+
+
+def scroll_to_middle(e: me.ClickEvent):
+  me.scroll_into_view(key="middle_line")
+
+
+def scroll_to_bottom(e: me.ClickEvent):
+  me.scroll_into_view(key="bottom_line")
+
+
+def scroll_to_bottom_and_generate_lines(e: me.ClickEvent):
+  state = me.state(State)
+  me.scroll_into_view(key="bottom_line")
+  yield
+  state.more_lines += 5
+  time.sleep(1)
+  yield
+  state.more_lines += 5
+  time.sleep(1)
+  yield
+  state.more_lines += 5
+  time.sleep(1)
+  yield
+  state.more_lines += 5
+  time.sleep(1)
+  yield
+
+```
+
+## API
+
+### scroll_into_view
+
+```python
+def scroll_into_view(*, key: str) -> None:
+  Scrolls so the component specified by the key is in the viewport.
+
+  Args:
+    key: The unique identifier of the component to scroll to.
+               This key should be globally unique to prevent unexpected behavior.
+               If multiple components share the same key, the first component
+               instance found in the component tree will be scrolled to.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Textarea allows the user to type in a value and is based on the [Angular Material input component](https://material.angular.io/components/input/overview) for `<textarea>`.
+
+This is similar to [Input](./input.md), but Textarea is better suited for long text inputs.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=textarea" style="height: 200px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.stateclass
+class State:
+  input: str = ""
+
+
+def on_blur(e: me.InputBlurEvent):
+  state = me.state(State)
+  state.input = e.value
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/textarea",
+)
+def app():
+  s = me.state(State)
+  me.textarea(label="Basic input", on_blur=on_blur)
+  me.text(text=s.input)
+
+```
+
+## API
+
+### textarea
+
+```python
+def textarea(*, label: str = '', on_blur: Optional[Callable[[mesop.components.input.input.InputBlurEvent], Any]] = None, on_input: Optional[Callable[[mesop.events.events.InputEvent], Any]] = None, rows: int = 5, autosize: bool = False, min_rows: int | None = None, max_rows: int | None = None, appearance: Literal['fill', 'outline'] = 'fill', style: mesop.component_helpers.style.Style | None = None, disabled: bool = False, placeholder: str = '', required: bool = False, value: str = '', readonly: bool = False, hide_required_marker: bool = False, color: Literal['primary', 'accent', 'warn'] = 'primary', float_label: Literal['always', 'auto'] = 'auto', subscript_sizing: Literal['fixed', 'dynamic'] = 'fixed', hint_label: str = '', key: str | None = None):
+  Creates a Textarea component.
+
+  Args:
+    label: Label for input.
+    on_blur: [blur](https://developer.mozilla.org/en-US/docs/Web/API/Element/blur_event) is fired when the input has lost focus.
+    on_input: [input](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/input_event) is fired whenever the input has changed (e.g. user types). Note: this can cause performance issues. Use `on_blur` instead.
+    autosize: If True, the textarea will automatically adjust its height to fit the content, up to the max_rows limit.
+    min_rows: The minimum number of rows the textarea will display.
+    max_rows: The maximum number of rows the textarea will display.
+    rows: The number of lines to show in the text area.
+    appearance: The form field appearance style.
+    style: Style for input.
+    disabled: Whether it's disabled.
+    placeholder: Placeholder value
+    required: Whether it's required
+    value: Initial value.
+    readonly: Whether the element is readonly.
+    hide_required_marker: Whether the required marker should be hidden.
+    color: The color palette for the form field.
+    float_label: Whether the label should always float or float as the user types.
+    subscript_sizing: Whether the form field should reserve space for one line of hint/error text (default) or to have the spacing grow from 0px as needed based on the size of the hint/error content. Note that when using dynamic sizing, layout shifts will occur when hint/error text changes.
+    hint_label: Text for the form field hint.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### native_textarea
+
+```python
+def native_textarea(*, on_blur: Optional[Callable[[mesop.components.input.input.InputBlurEvent], Any]] = None, on_input: Optional[Callable[[mesop.events.events.InputEvent], Any]] = None, autosize: bool = False, min_rows: int | None = None, max_rows: int | None = None, style: mesop.component_helpers.style.Style | None = None, disabled: bool = False, placeholder: str = '', value: str = '', readonly: bool = False, key: str | None = None):
+  Creates a browser native Textarea component. Intended for advanced use cases with maximum UI control.
+
+  Args:
+    on_blur: [blur](https://developer.mozilla.org/en-US/docs/Web/API/Element/blur_event) is fired when the input has lost focus.
+    on_input: [input](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/input_event) is fired whenever the input has changed (e.g. user types). Note: this can cause performance issues. Use `on_blur` instead.
+    autosize: If True, the textarea will automatically adjust its height to fit the content, up to the max_rows limit.
+    min_rows: The minimum number of rows the textarea will display.
+    max_rows: The maximum number of rows the textarea will display.
+    style: Style for input.
+    disabled: Whether it's disabled.
+    placeholder: Placeholder value
+    value: Initial value.
+    readonly: Whether the element is readonly.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### InputBlurEvent
+
+```python
+class InputBlurEvent(*, key: str, value: str) -> None:
+  Represents an inpur blur event (when a user loses focus of an input).
+
+  Attributes:
+      value: Input value.
+      key (str): key of the component that emitted this event.
+```
+
+### InputEvent
+
+```python
+class InputEvent(*, key: str, value: str) -> None:
+  Represents a user input event.
+
+  Attributes:
+      value: Input value.
+      key (str): key of the component that emitted this event.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Audio is the equivalent of an [`<audio>` HTML element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio). Audio displays the browser's native audio controls.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=audio" style="height: 80px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/audio",
+)
+def app():
+  """
+  In order to autoplay audio, set the `autoplay` attribute to `True`,
+  Note that there are autoplay restrictions in modern browsers, including Chrome,
+  are designed to prevent audio or video from playing automatically without user interaction.
+  This is intended to improve user experience and reduce unwanted interruptions.
+  You can check the [autoplay ability of your application](https://developer.mozilla.org/en-US/docs/Web/Media/Autoplay_guide#autoplay_availability)
+  """
+  me.audio(
+    src="https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3",
+    # autoplay=True
+  )
+
+```
+
+## API
+
+### audio
+
+```python
+def audio(*, src: str | None = None, key: str | None = None, autoplay: bool = False):
+  Creates an audio component.
+
+  Args:
+      src: The URL of the audio to be played.
+      autoplay: boolean value indicating if the audio should be autoplayed or not. **Note**: There are autoplay restrictions in modern browsers, including Chrome, are designed to prevent audio or video from playing automatically without user interaction. This is intended to improve user experience and reduce unwanted interruptions
+      key: The component [key](../components/index.md#component-key).
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Table allows the user to render an [Angular Material table component](https://material.angular.io/components/table/overview) from a Pandas data frame.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=table"></iframe>
+
+```python
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+
+import mesop as me
+
+
+@me.stateclass
+class State:
+  selected_cell: str = "No cell selected."
+
+
+df = pd.DataFrame(
+  data={
+    "NA": [pd.NA, pd.NA, pd.NA],
+    "Index": [3, 2, 1],
+    "Bools": [True, False, np.bool_(True)],
+    "Ints": [101, 90, np.int64(-55)],
+    "Floats": [2.3, 4.5, np.float64(-3.000000003)],
+    "Strings": ["Hello", "World", "!"],
+    "Date Times": [
+      pd.Timestamp("20180310"),
+      pd.Timestamp("20230310"),
+      datetime(2023, 1, 1, 12, 12, 1),
+    ],
+  }
+)
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/table",
+)
+def app():
+  state = me.state(State)
+
+  with me.box(style=me.Style(padding=me.Padding.all(10), width=500)):
+    me.table(
+      df,
+      on_click=on_click,
+      header=me.TableHeader(sticky=True),
+      columns={
+        "NA": me.TableColumn(sticky=True),
+        "Index": me.TableColumn(sticky=True),
+      },
+    )
+
+  with me.box(
+    style=me.Style(
+      background="#ececec",
+      margin=me.Margin.all(10),
+      padding=me.Padding.all(10),
+    )
+  ):
+    me.text(state.selected_cell)
+
+
+def on_click(e: me.TableClickEvent):
+  state = me.state(State)
+  state.selected_cell = (
+    f"Selected cell at col {e.col_index} and row {e.row_index} "
+    f"with value {df.iat[e.row_index, e.col_index]!s}"
+  )
+
+```
+
+## API
+
+### table
+
+```python
+def table(data_frame: Any, *, on_click: Optional[Callable[[mesop.components.table.table.TableClickEvent], Any]] = None, header: mesop.components.table.table.TableHeader | None = None, columns: dict[str, mesop.components.table.table.TableColumn] | None = None):
+  This function creates a table from Pandas data frame
+
+  Args:
+      data_frame: Pandas data frame.
+      on_click: Triggered when a table cell is clicked. The [click event](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/click_event) is a native browser event.
+      header: Configures table header to be sticky or not.
+      columns: Configures table columns to be sticky or not. The key is the name of the column.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Box is a [content component](../components/index.md#content-components) which acts as a container to group children components and styling them.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=box" style="height: 160px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/box",
+)
+def app():
+  with me.box(style=me.Style(background="red", padding=me.Padding.all(16))):
+    with me.box(
+      style=me.Style(
+        background="green",
+        height=50,
+        margin=me.Margin.symmetric(vertical=24, horizontal=12),
+        border=me.Border.symmetric(
+          horizontal=me.BorderSide(width=2, color="pink", style="solid"),
+          vertical=me.BorderSide(width=2, color="orange", style="solid"),
+        ),
+      )
+    ):
+      me.text(text="hi1")
+      me.text(text="hi2")
+
+    with me.box(
+      style=me.Style(
+        background="blue",
+        height=50,
+        margin=me.Margin.all(16),
+        border=me.Border.all(
+          me.BorderSide(width=2, color="yellow", style="dotted")
+        ),
+        border_radius=10,
+      )
+    ):
+      me.text(text="Example with all sides bordered")
+
+    with me.box(
+      style=me.Style(
+        background="purple",
+        height=50,
+        margin=me.Margin.symmetric(vertical=24, horizontal=12),
+        border=me.Border.symmetric(
+          vertical=me.BorderSide(width=4, color="white", style="double")
+        ),
+      )
+    ):
+      me.text(text="Example with top and bottom borders")
+
+    with me.box(
+      style=me.Style(
+        background="cyan",
+        height=50,
+        margin=me.Margin.symmetric(vertical=24, horizontal=12),
+        border=me.Border.symmetric(
+          horizontal=me.BorderSide(width=2, color="black", style="groove")
+        ),
+      )
+    ):
+      me.text(text="Example with left and right borders")
+
+```
+
+## API
+
+### box
+
+```python
+def box(*, style: mesop.component_helpers.style.Style | None = None, on_click: Optional[Callable[[mesop.events.events.ClickEvent], Any]] = None, key: str | None = None) -> Any:
+  Creates a box component.
+
+  Args:
+    style: Style to apply to component. Follows [HTML Element inline style API](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/style).
+    on_click: The callback function that is called when the box is clicked.
+      It receives a ClickEvent as its only argument.
+    key: The component [key](../components/index.md#component-key).
+
+  Returns:
+    The created box component.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Text To Image component is a quick and simple way of getting started with Mesop. Text To Image is part of [Mesop Labs](../guides/labs.md).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=text_to_image"></iframe>
+
+```python
+import mesop as me
+import mesop.labs as mel
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/text_to_image",
+  title="Text to Image Example",
+)
+def app():
+  mel.text_to_image(
+    generate_image,
+    title="Text to Image Example",
+  )
+
+
+def generate_image(prompt: str):
+  return "https://www.google.com/logos/doodles/2024/earth-day-2024-6753651837110453-2xa.gif"
+
+```
+## API
+
+### text_to_image
+
+```python
+def text_to_image(transform: Callable[[str], str], *, title: str | None = None):
+  Creates a simple UI which takes in a text input and returns an image output.
+
+  This function creates event handlers for text input and output operations
+  using the provided function `transform` to process the input and generate the image
+  output.
+
+  Args:
+    transform: Function that takes in a string input and returns a URL to an image or a base64 encoded image.
+    title: Headline text to display at the top of the UI.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Text to text component allows you to take in user inputted text and return a transformed text. This is part of [Mesop Labs](../guides/labs.md).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=text_to_text"></iframe>
+
+```python
+import mesop as me
+import mesop.labs as mel
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/text_to_text",
+  title="Text to Text Example",
+)
+def app():
+  mel.text_to_text(
+    upper_case_stream,
+    title="Text to Text Example",
+  )
+
+
+def upper_case_stream(s: str):
+  return "Echo: " + s
+
+```
+
+## API
+
+### text_to_text
+
+```python
+def text_to_text(transform: Callable[[str], Union[Generator[str, NoneType, NoneType], str]], *, title: str | None = None, transform_mode: Literal['append', 'replace'] = 'append'):
+  Creates a simple UI which takes in a text input and returns a text output.
+
+  This function creates event handlers for text input and output operations
+  using the provided transform function to process the input and generate the output.
+
+  Args:
+    transform: Function that takes in a string input and either returns or yields a string output.
+    title: Headline text to display at the top of the UI
+    transform_mode: Specifies how the output should be updated when yielding an output using a generator.
+                  - "append": Concatenates each new piece of text to the existing output.
+                  - "replace": Replaces the existing output with each new piece of text.
+```
+
+
+### text_io
+
+```python
+def text_io(transform: Callable[[str], Union[Generator[str, NoneType, NoneType], str]], *, title: str | None = None, transform_mode: Literal['append', 'replace'] = 'replace'):
+  Deprecated: Use `text_to_text` instead which provides the same functionality
+  with better default settings.
+
+  This function creates event handlers for text input and output operations
+  using the provided transform function to process the input and generate the output.
+
+  Args:
+    transform: Function that takes in a string input and either returns or yields a string output.
+    title: Headline text to display at the top of the UI
+    transform_mode: Specifies how the output should be updated when yielding an output using a generator.
+                  - "append": Concatenates each new piece of text to the existing output.
+                  - "replace": Replaces the existing output with each new piece of text.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Radio is a single selection form control based on the [Angular Material radio component](https://material.angular.io/components/radio/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=radio" style="height: 100px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.stateclass
+class State:
+  radio_value: str = "2"
+
+
+def on_change(event: me.RadioChangeEvent):
+  s = me.state(State)
+  s.radio_value = event.value
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/radio",
+)
+def app():
+  s = me.state(State)
+  me.text("Horizontal radio options")
+  me.radio(
+    on_change=on_change,
+    options=[
+      me.RadioOption(label="Option 1", value="1"),
+      me.RadioOption(label="Option 2", value="2"),
+    ],
+    value=s.radio_value,
+  )
+  me.text(text="Selected radio value: " + s.radio_value)
+
+```
+
+## API
+
+### radio
+
+```python
+def radio(*, options: Iterable[mesop.components.radio.radio.RadioOption] = (), on_change: Optional[Callable[[mesop.components.radio.radio.RadioChangeEvent], Any]] = None, color: Optional[Literal['primary', 'accent', 'warn']] = None, label_position: Literal['before', 'after'] = 'after', value: str = '', disabled: bool = False, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  Creates a Radio component.
+
+  Args:
+    options: List of radio options
+    on_change: Event emitted when the group value changes. Change events are only emitted when the value changes due to user interaction with a radio button (the same behavior as `<input type-"radio">`).
+    color: Theme color for all of the radio buttons in the group.
+    label_position: Whether the labels should appear after or before the radio-buttons. Defaults to 'after'
+    value: Value for the radio-group. Should equal the value of the selected radio button if there is a corresponding radio button with a matching value.
+    disabled: Whether the radio group is disabled.
+    style: Style for the component.
+    key: The component [key](../components/index.md#component-key).
+```
+
+
+### RadioOption
+
+```python
+class RadioOption(*, label: str | None = None, value: str | None = None) -> None:
+  Attributes:
+    label: Content to show for the radio option
+    value: The value of this radio button.
+```
+
+
+### RadioChangeEvent
+
+```python
+class RadioChangeEvent(*, key: str, value: str) -> None:
+  Event representing a change in the radio component's value.
+
+  Attributes:
+      value: The new value of the radio component after the change.
+      key (str): key of the component that emitted this event.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Plot provides a convenient way to render [Matplotlib](https://matplotlib.org/) figures as an image.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=plot"></iframe>
+
+```python
+from matplotlib.figure import Figure
+
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/plot",
+)
+def app():
+  # Create matplotlib figure without using pyplot:
+  fig = Figure()
+  ax = fig.subplots()  # type: ignore
+  ax.plot([1, 2])  # type: ignore
+
+  me.text("Example using matplotlib:")
+  me.plot(fig, style=me.Style(width="100%"))
+
+```
+
+## API
+
+### plot
+
+```python
+def plot(figure: mesop.components.plot.plot.Figure, *, style: mesop.component_helpers.style.Style | None = None):
+  Creates a plot component from a Matplotlib figure.
+
+  Args:
+    figure: A [Matplotlib figure](https://matplotlib.org/stable/api/figure_api.html#matplotlib.figure.Figure) which will be rendered.
+    style: An optional Style object that defines the visual styling for the
+      plot component. If None, default styling (e.g. height, width) is used.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Uploader is the equivalent of an [`<input type="file>` HTML element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file) except it uses a custom UI that better
+matches the look of Angular Material Components.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=uploader" style="height: 200px"></iframe>
+
+```python
+import base64
+
+import mesop as me
+
+
+@me.stateclass
+class State:
+  file: me.UploadedFile
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/uploader",
+)
+def app():
+  state = me.state(State)
+  with me.box(style=me.Style(padding=me.Padding.all(15))):
+    me.uploader(
+      label="Upload Image",
+      accepted_file_types=["image/jpeg", "image/png"],
+      on_upload=handle_upload,
+      type="flat",
+      color="primary",
+      style=me.Style(font_weight="bold"),
+    )
+
+    if state.file.size:
+      with me.box(style=me.Style(margin=me.Margin.all(10))):
+        me.text(f"File name: {state.file.name}")
+        me.text(f"File size: {state.file.size}")
+        me.text(f"File type: {state.file.mime_type}")
+
+      with me.box(style=me.Style(margin=me.Margin.all(10))):
+        me.image(src=_convert_contents_data_url(state.file))
+
+
+def handle_upload(event: me.UploadEvent):
+  state = me.state(State)
+  state.file = event.file
+
+
+def _convert_contents_data_url(file: me.UploadedFile) -> str:
+  return (
+    f"data:{file.mime_type};base64,{base64.b64encode(file.getvalue()).decode()}"
+  )
+
+```
+
+## API
+
+### uploader
+
+```python
+def uploader(*, label: str, accepted_file_types: Optional[Sequence[str]] = None, key: str | None = None, on_upload: Optional[Callable[[mesop.components.uploader.uploader.UploadEvent], Any]] = None, type: Optional[Literal['raised', 'flat', 'stroked']] = None, color: Optional[Literal['primary', 'accent', 'warn']] = None, disable_ripple: bool = False, disabled: bool = False, style: mesop.component_helpers.style.Style | None = None):
+  This function creates an uploader.
+
+  Args:
+      label: Upload button label.
+      accepted_file_types: List of accepted file types. See the [accept parameter](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#accept).
+      key: The component [key](../components/index.md#component-key).
+      on_upload: File upload event handler.
+      type: Type of button style to use
+      color: Theme color palette of the button
+      disable_ripple: Whether the ripple effect is disabled or not.
+      disabled: Whether the button is disabled.
+      style: Style for the component.
+```
+
+### UploadEvent
+
+```python
+class UploadEvent(*, key: str, file: mesop.components.uploader.uploaded_file.UploadedFile) -> None:
+  Event for file uploads.
+
+  Attributes:
+      file: Uploaded file.
+```
+
+### UploadedFile
+
+```python
+class UploadedFile(contents: bytes = b'', *, name: str = '', size: int = 0, mime_type: str = ''):
+  Uploaded file contents and metadata.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Progress Spinner is used to indicate something is in progress and is based on the [Angular Material progress spinner component](https://material.angular.io/components/progress-spinner/overview).
+
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=progress_spinner" style="height: 70px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/progress_spinner",
+)
+def app():
+  me.progress_spinner()
+
+```
+
+## API
+
+### progress_spinner
+
+```python
+def progress_spinner(*, key: str | None = None, color: Optional[Literal['primary', 'accent', 'warn']] = None, diameter: float = 48, stroke_width: float = 4):
+  Creates a Progress spinner component.
+
+  Args:
+    key: The component [key](../components/index.md#component-key).
+    color: Theme palette color of the progress spinner.
+    diameter: The diameter of the progress spinner (will set width and height of svg).
+    stroke_width: Stroke width of the progress spinner.
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Input allows the user to type in a value and is based on the [Angular Material input component](https://material.angular.io/components/input/overview).
+
+For longer text inputs, also see [Textarea](./textarea.md)
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=input" style="height: 120px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.stateclass
+class State:
+  input: str = ""
+
+
+def on_blur(e: me.InputBlurEvent):
+  state = me.state(State)
+  state.input = e.value
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/input",
+)
+def app():
+  s = me.state(State)
+  me.input(label="Basic input", on_blur=on_blur)
+  me.text(text=s.input)
+
+```
+
+## API
+
+### input
+
+```python
+def input(*, label: str = '', on_blur: Optional[Callable[[mesop.components.input.input.InputBlurEvent], Any]] = None, on_input: Optional[Callable[[mesop.events.events.InputEvent], Any]] = None, on_enter: Optional[Callable[[mesop.components.input.input.InputEnterEvent], Any]] = None, type: Optional[Literal['color', 'date', 'datetime-local', 'email', 'month', 'number', 'password', 'search', 'tel', 'text', 'time', 'url', 'week']] = None, appearance: Literal['fill', 'outline'] = 'fill', style: mesop.component_helpers.style.Style | None = None, disabled: bool = False, placeholder: str = '', required: bool = False, value: str = '', readonly: bool = False, hide_required_marker: bool = False, color: Literal['primary', 'accent', 'warn'] = 'primary', float_label: Literal['always', 'auto'] = 'auto', subscript_sizing: Literal['fixed', 'dynamic'] = 'fixed', hint_label: str = '', key: str | None = None):
+  Creates a Input component.
+
+  Args:
+    label: Label for input.
+    on_blur: [blur](https://developer.mozilla.org/en-US/docs/Web/API/Element/blur_event) is fired when the input has lost focus.
+    on_input: [input](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/input_event) is fired whenever the input has changed (e.g. user types). Note: this can cause performance issues. Use `on_blur` instead.
+    on_enter: triggers when the browser detects an "Enter" key on a [keyup](https://developer.mozilla.org/en-US/docs/Web/API/Element/keyup_event) native browser event.
+    type: Input type of the element. For textarea, use `me.Textarea(...)`
+    appearance: The form field appearance style.
+    style: Style for input.
+    disabled: Whether it's disabled.
+    placeholder: Placeholder value
+    required: Whether it's required
+    value: Initial value.
+    readonly: Whether the element is readonly.
+    hide_required_marker: Whether the required marker should be hidden.
+    color: The color palette for the form field.
+    float_label: Whether the label should always float or float as the user types.
+    subscript_sizing: Whether the form field should reserve space for one line of hint/error text (default) or to have the spacing grow from 0px as needed based on the size of the hint/error content. Note that when using dynamic sizing, layout shifts will occur when hint/error text changes.
+    hint_label: Text for the form field hint.
+    key: The component [key](../components/index.md#component-key).
+```
+
+### InputBlurEvent
+
+```python
+class InputBlurEvent(*, key: str, value: str) -> None:
+  Represents an inpur blur event (when a user loses focus of an input).
+
+  Attributes:
+      value: Input value.
+      key (str): key of the component that emitted this event.
+```
+
+### InputEnterEvent
+
+```python
+class InputEnterEvent(*, key: str, value: str) -> None:
+  Represents an "Enter" keyboard event on an input component.
+
+  Attributes:
+    value: Input value.
+    key (str): key of the component that emitted this event.
+```
+
+### InputEvent
+
+```python
+class InputEvent(*, key: str, value: str) -> None:
+  Represents a user input event.
+
+  Attributes:
+      value: Input value.
+      key (str): key of the component that emitted this event.
+```
+<documentation>
+
+<documentation>
+# Frequently Asked Questions
+
+## General
+
+### What kinds of apps is Mesop suited for?
+
+Mesop is well-suited for ML/AI demos and internal tools because it enables developers without frontend experience to quickly build web apps. For use cases that prioritize developer experience and velocity, Mesop can be a good choice.
+
+Demanding consumer-facing apps, which have strict requirements in terms of performance, custom UI components, and i18n/localization would not be a good fit for Mesop and other UI frameworks may be more suitable.
+
+### How does Mesop compare to other Python UI frameworks?
+
+We have written a [comparison](./comparison.md) doc to answer this question in-depth.
+
+### Is Mesop production-ready?
+
+Dozens of teams at Google have used Mesop to build demos and internal apps.
+
+Although Mesop is pre-v1, we take backwards-compatibilty seriously and avoid backwards incompatible change. This is critical to us because many teams within Google rely on Mesop and we need to not break them.
+
+Occasionally, we will do minor clean-up for our APIs, but we will provide warnings/deprecation notices and provide at least 1 release to migrate to the newer APIs.
+
+### Which modules should I import from Mesop?
+
+Only import from these two modules:
+
+```py
+import mesop as me
+import mesop.labs as mel
+```
+
+All other modules are considered internal implementation details and may change without notice in future releases.
+
+### Is Mesop an official Google product?
+
+No, Mesop is not an official Google product and Mesop is a 20% project maintained by a small core team of Google engineers with contributions from the broader community.
+
+## Deployment
+
+### How do I share or deploy my Mesop app?
+
+The best way to share your Mesop app is to deploy it to a cloud service. You can follow our [deployment guide](./guides/deployment.md) for step-by-step instructions to deploy to Google Cloud Run.
+
+> Note: you should be able to deploy Mesop on any cloud service that takes a container. Please read the above deployment guide as it should be similar steps.
+<documentation>
+
+<documentation>
+## Overview
+
+Icon displays a Material icon/symbol and is based on the [Angular Material icon component](https://material.angular.io/components/icon/overview).
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=icon" style="height: 60px"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/icon",
+)
+def app():
+  me.text("home icon")
+  me.icon(icon="home")
+
+```
+
+## API
+
+### icon
+
+```python
+def icon(icon: str | None = None, *, key: str | None = None, style: mesop.component_helpers.style.Style | None = None):
+  Creates a Icon component.
+
+  Args:
+    key: The component [key](../components/index.md#component-key).
+    icon: Name of the [Material Symbols icon](https://fonts.google.com/icons).
+    style: Inline styles
+```
+<documentation>
+
+<documentation>
+## Overview
+
+Link creates an HTML anchor element (i.e. `<a>`) which links to another page.
+
+## Examples
+
+<iframe class="component-demo" src="https://google.github.io/mesop/demo/?demo=link"></iframe>
+
+```python
+import mesop as me
+
+
+@me.page(
+  security_policy=me.SecurityPolicy(
+    allowed_iframe_parents=["https://google.github.io"]
+  ),
+  path="/link",
+)
+def link():
+  me.link(text="Open in same tab", url="https://google.github.io/mesop/")
+  me.link(
+    text="Open in new tab",
+    open_in_new_tab=True,
+    url="https://google.github.io/mesop/",
+  )
+  me.link(
+    text="Styled link",
+    url="https://google.github.io/mesop/",
+    style=me.Style(color="black", text_decoration="none"),
+  )
+
+```
+
+## API
+
+### link
+
+```python
+def link(*, text: str, url: str, open_in_new_tab: bool = False, style: mesop.component_helpers.style.Style | None = None, key: str | None = None):
+  This function creates a link.
+
+  Args:
+      text: The text to be displayed.
+      url: The URL to navigate to.
+      open_in_new_tab: If True, open page in new tab. If False, open page in current tab.
+      style: Style for the component. Defaults to None.
+      key: Unique key for the component. Defaults to None.
+```
+<documentation>
+
+<documentation>
+# Quickstart
+
+Let's build a simple interactive Mesop app.
+
+## Before you start
+
+Make sure you've installed Mesop, otherwise please follow the [Installing Guide](./installing.md).
+
+## Starter kit
+
+The simplest way to get started with Mesop is to use the starter kit by running `mesop init`. You can also copy and paste the code.
+
+```python
+import time
+
+import mesop as me
+
+
+@me.stateclass
+class State:
+  input: str
+  output: str
+  in_progress: bool
+
+
+@me.page(path="/starter_kit")
+def page():
+  with me.box(
+    style=me.Style(
+      background="#fff",
+      min_height="calc(100% - 48px)",
+      padding=me.Padding(bottom=16),
+    )
+  ):
+    with me.box(
+      style=me.Style(
+        width="min(720px, 100%)",
+        margin=me.Margin.symmetric(horizontal="auto"),
+        padding=me.Padding.symmetric(
+          horizontal=16,
+        ),
+      )
+    ):
+      header_text()
+      example_row()
+      chat_input()
+      output()
+  footer()
+
+
+def header_text():
+  with me.box(
+    style=me.Style(
+      padding=me.Padding(
+        top=64,
+        bottom=36,
+      ),
+    )
+  ):
+    me.text(
+      "Mesop Starter Kit",
+      style=me.Style(
+        font_size=36,
+        font_weight=700,
+        background="linear-gradient(90deg, #4285F4, #AA5CDB, #DB4437) text",
+        color="transparent",
+      ),
+    )
+
+
+EXAMPLES = [
+  "How to tie a shoe",
+  "Make a brownie recipe",
+  "Write an email asking for a sick day off",
+]
+
+
+def example_row():
+  is_mobile = me.viewport_size().width < 640
+  with me.box(
+    style=me.Style(
+      display="flex",
+      flex_direction="column" if is_mobile else "row",
+      gap=24,
+      margin=me.Margin(bottom=36),
+    )
+  ):
+    for example in EXAMPLES:
+      example_box(example, is_mobile)
+
+
+def example_box(example: str, is_mobile: bool):
+  with me.box(
+    style=me.Style(
+      width="100%" if is_mobile else 200,
+      height=140,
+      background="#F0F4F9",
+      padding=me.Padding.all(16),
+      font_weight=500,
+      line_height="1.5",
+      border_radius=16,
+      cursor="pointer",
+    ),
+    key=example,
+    on_click=click_example_box,
+  ):
+    me.text(example)
+
+
+def click_example_box(e: me.ClickEvent):
+  state = me.state(State)
+  state.input = e.key
+
+
+def chat_input():
+  state = me.state(State)
+  with me.box(
+    style=me.Style(
+      padding=me.Padding.all(8),
+      background="white",
+      display="flex",
+      width="100%",
+      border=me.Border.all(
+        me.BorderSide(width=0, style="solid", color="black")
+      ),
+      border_radius=12,
+      box_shadow="0 10px 20px #0000000a, 0 2px 6px #0000000a, 0 0 1px #0000000a",
+    )
+  ):
+    with me.box(
+      style=me.Style(
+        flex_grow=1,
+      )
+    ):
+      me.native_textarea(
+        value=state.input,
+        autosize=True,
+        min_rows=4,
+        placeholder="Enter your prompt",
+        style=me.Style(
+          padding=me.Padding(top=16, left=16),
+          background="white",
+          outline="none",
+          width="100%",
+          overflow_y="auto",
+          border=me.Border.all(
+            me.BorderSide(style="none"),
+          ),
+        ),
+        on_blur=textarea_on_blur,
+      )
+    with me.content_button(type="icon", on_click=click_send):
+      me.icon("send")
+
+
+def textarea_on_blur(e: me.InputBlurEvent):
+  state = me.state(State)
+  state.input = e.value
+
+
+def click_send(e: me.ClickEvent):
+  state = me.state(State)
+  if not state.input:
+    return
+  state.in_progress = True
+  input = state.input
+  state.input = ""
+  yield
+
+  for chunk in call_api(input):
+    state.output += chunk
+    yield
+  state.in_progress = False
+  yield
+
+
+def call_api(input):
+  # Replace this with an actual API call
+  time.sleep(0.5)
+  yield "Example of streaming an output"
+  time.sleep(1)
+  yield "\n\nOutput: " + input
+
+
+def output():
+  state = me.state(State)
+  if state.output or state.in_progress:
+    with me.box(
+      style=me.Style(
+        background="#F0F4F9",
+        padding=me.Padding.all(16),
+        border_radius=16,
+        margin=me.Margin(top=36),
+      )
+    ):
+      if state.output:
+        me.markdown(state.output)
+      if state.in_progress:
+        with me.box(style=me.Style(margin=me.Margin(top=16))):
+          me.progress_spinner()
+
+
+def footer():
+  with me.box(
+    style=me.Style(
+      position="sticky",
+      bottom=0,
+      padding=me.Padding.symmetric(vertical=16, horizontal=16),
+      width="100%",
+      background="#F0F4F9",
+      font_size=14,
+    )
+  ):
+    me.html(
+      "Made with <a href='https://google.github.io/mesop/'>Mesop</a>",
+    )
+
+```
+
+## Running a Mesop app
+
+Once you've created your Mesop app using the starter kit, you can run the Mesop app by running the following command in your terminal:
+
+```sh
+mesop main.py
+```
+
+> If you've named it something else, replace `main.py` with the filename of your Python module.
+
+Open the URL printed in the terminal (i.e. http://localhost:32123) in the browser to see your Mesop app loaded.
+
+## Hot reload
+
+If you make changes to the code, the Mesop app should be automatically hot reloaded. This means that you can keep the `mesop` CLI command running in the background in your terminal and your UI will automatically be updated in the browser.
+
+## Next steps
+
+Learn more about the core concepts of Mesop as you learn how to build your own Mesop app:
+
+<a href="../core-concepts" class="next-step">
+Core Concepts
+</a>
+<documentation>
+
+<documentation>
+# Interactivity
+
+This guide continues from the [event handlers guide](./event-handlers.md) and explains advanced interactivity patterns for dealing with common use cases such as calling a slow blocking API call or a streaming API call.
+
+## Intermediate loading state
+
+If you are calling a slow blocking API (e.g. several seconds) to provide a better user experience, you may want to introduce a custom loading indicator for a specific event.
+
+> Note: Mesop has a built-in loading indicator at the top of the page for all events.
+
+```python
+import time
+
+import mesop as me
+
+
+def slow_blocking_api_call():
+  time.sleep(2)
+  return "foo"
+
+
+@me.stateclass
+class State:
+  data: str
+  is_loading: bool
+
+
+def button_click(event: me.ClickEvent):
+  state = me.state(State)
+  state.is_loading = True
+  yield
+  data = slow_blocking_api_call()
+  state.data = data
+  state.is_loading = False
+  yield
+
+
+@me.page(path="/loading")
+def main():
+  state = me.state(State)
+  if state.is_loading:
+    me.progress_spinner()
+  me.text(state.data)
+  me.button("Call API", on_click=button_click)
+
+```
+
+In this example, our event handler is a Python generator function. Each `yield` statement yields control back to the Mesop framework and executes a render loop which results in a UI update.
+
+Before the first yield statement, we set `is_loading` to True on state so we can show a spinner while the user is waiting for the slow API call to complete.
+
+Before the second (and final) yield statement, we set `is_loading` to False, so we can hide the spinner and then we add the result of the API call to state so we can display that to the user.
+
+> Tip: you must have a yield statement as the last line of a generator event handler function. Otherwise, any code after the final yield will not be executed.
+
+## Streaming
+
+This example builds off the previous Loading example and makes our event handler a generator function so we can incrementally update the UI.
+
+```python
+from time import sleep
+
+import mesop as me
+
+
+def generate_str():
+  yield "foo"
+  sleep(1)
+  yield "bar"
+
+
+@me.stateclass
+class State:
+  string: str = ""
+
+
+def button_click(action: me.ClickEvent):
+  state = me.state(State)
+  for val in generate_str():
+    state.string += val
+    yield
+
+
+@me.page(path="/streaming")
+def main():
+  state = me.state(State)
+  me.button("click", on_click=button_click)
+  me.text(text=f"{state.string}")
+
+```
+
+## Async
+
+If you want to do multiple long-running operations concurrently, then we recommend you to use Python's `async` and `await`.
+
+```python
+import asyncio
+
+import mesop as me
+
+
+@me.page(path="/async_await")
+def page():
+  s = me.state(State)
+  me.text("val1=" + s.val1)
+  me.text("val2=" + s.val2)
+  me.button("async with yield", on_click=click_async_with_yield)
+  me.button("async without yield", on_click=click_async_no_yield)
+
+
+@me.stateclass
+class State:
+  val1: str
+  val2: str
+
+
+async def fetch_dummy_values():
+  # Simulate an asynchronous operation
+  await asyncio.sleep(2)
+  return "<async_value>"
+
+
+async def click_async_with_yield(e: me.ClickEvent):
+  val1_task = asyncio.create_task(fetch_dummy_values())
+  val2_task = asyncio.create_task(fetch_dummy_values())
+
+  me.state(State).val1, me.state(State).val2 = await asyncio.gather(
+    val1_task, val2_task
+  )
+  yield
+
+
+async def click_async_no_yield(e: me.ClickEvent):
+  val1_task = asyncio.create_task(fetch_dummy_values())
+  val2_task = asyncio.create_task(fetch_dummy_values())
+
+  me.state(State).val1, me.state(State).val2 = await asyncio.gather(
+    val1_task, val2_task
+  )
+
+```
+
+## Troubleshooting
+
+### User input race condition
+
+If you notice a race condition with user input (e.g. [input](../components/input.md) or [textarea](../components/textarea.md)) where sometimes the last few characters typed by the user is lost, you are probably unnecessarily setting the value of the component.
+
+See the following example using this **anti-pattern** :warning::
+
+```py title="Bad example: setting the value and using on_input"
+@me.stateclass
+class State:
+input_value: str
+
+def app():
+state = me.state(State)
+me.input(value=state.input_value, on_input=on_input)
+
+def on_input(event: me.InputEvent):
+state = me.state(State)
+state.input_value = event.value
+```
+
+The problem is that the input value now has a race condition because it's being set by two sources:
+
+1. The server is setting the input value based on state.
+2. The client is setting the input value based on what the user is typing.
+
+There's several ways to fix this which are shown below.
+
+#### Option 1: Use `on_blur` instead of `on_input`
+
+You can use the `on_blur` event instead of `on_input` to only update the input value when the user loses focus on the input field.
+
+This is also more performant because it sends much fewer network requests.
+
+```py title="Good example: setting the value and using on_input"
+@me.stateclass
+class State:
+input_value: str
+
+def app():
+state = me.state(State)
+me.input(value=state.input_value, on_input=on_input)
+
+def on_input(event: me.InputEvent):
+state = me.state(State)
+state.input_value = event.value
+```
+
+#### Option 2: Do not set the input value from the server
+
+If you don't need to set the input value from the server, then you can remove the `value` attribute from the input component.
+
+```py title="Good example: not setting the value" hl_lines="7"
+@me.stateclass
+class State:
+input_value: str
+
+def app():
+state = me.state(State)
+me.input(on_input=on_input)
+
+def on_input(event: me.InputEvent):
+state = me.state(State)
+state.input_value = event.value
+```
+
+#### Option 3: Use two separate variables for initial and current input value
+
+If you need set the input value from the server *and* you need to use `on_input`, then you can use two separate variables for the initial and current input value.
+
+```py title="Good example: using two separate variables for initial and current input value" hl_lines="9"
+@me.stateclass
+class State:
+initial_input_value: str = "initial_value"
+current_input_value: str
+
+@me.page()
+def app():
+state = me.state(State)
+me.input(value=state.initial_input_value, on_input=on_input)
+
+def on_input(event: me.InputEvent):
+state = me.state(State)
+state.current_input_value = event.value
+```
+
+## Next steps
+
+Learn about layouts to build a customized UI.
+
+<a href="../layouts" class="next-step">
+Layouts
+</a>
+<documentation>

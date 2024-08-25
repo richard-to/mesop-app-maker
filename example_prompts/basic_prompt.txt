@@ -1,0 +1,7 @@
+Build a basic chat app.
+
+Here are the requirements, which you should follow carefully.
+
+1. The chat messages should use bubble chat styled messages
+2. Add thumbs up and thumbs down buttons for the bot messages. These buttons should be
+aligned BELOW the bot message.

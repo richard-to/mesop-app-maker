@@ -26,7 +26,7 @@ def dialog(is_open: bool):
       overflow_y="auto",
       position="fixed",
       width="100%",
-      z_index=1000,
+      z_index=2000,
     )
   ):
     with me.box(

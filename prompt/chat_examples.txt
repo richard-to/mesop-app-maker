@@ -1,0 +1,730 @@
+This section provides examples of writing chat UIs in Mesop. Each example is wrapped in <example> tags.
+
+<example>
+# This is an example of a basic chat app.
+import random
+import time
+from dataclasses import dataclass
+from typing import Literal
+
+import mesop as me
+
+Role = Literal["user", "bot"]
+
+
+@dataclass(kw_only=True)
+class ChatMessage:
+  """Chat message metadata."""
+
+  role: Role = "user"
+  content: str = ""
+  edited: bool = False
+
+
+@me.stateclass
+class State:
+  input: str
+  output: list[ChatMessage]
+  in_progress: bool
+
+
+@me.page()
+def basic_chat():
+  state = me.state(State)
+  with me.box(
+    style=me.Style(
+      color=me.theme_var("on-surface"),
+      background=me.theme_var("surface-container-lowest"),
+      display="flex",
+      flex_direction="column",
+      height="100%",
+      padding=me.Padding.all(15),
+    )
+  ):
+    # This contains the chat messages that have been recorded. This takes 50fr.
+    # This section can be replaced with other types of chat messages.
+
+    # We set overflow to scroll so that the chat input will be fixed at the bottom.
+    with me.box(style=me.Style(overflow_y="scroll", flex_grow=1)):
+      for msg in state.output:
+        # User chat message
+        if msg.role == "user":
+          with me.box(
+            style=me.Style(display="flex", gap=15, margin=me.Margin.all(20))
+          ):
+            # User avatar/icon box
+            me.text(
+              "U",
+              style=me.Style(
+                background=me.theme_var("primary"),
+                border_radius="50%",
+                color=me.theme_var("on-primary"),
+                font_size=20,
+                height=40,
+                width=40,
+                text_align="center",
+                line_height="1",
+                padding=me.Padding(top=10),
+                margin=me.Margin(top=16),
+              ),
+            )
+            # User query
+            me.markdown(msg.content)
+        else:
+          # Bot chat message
+          with me.box(
+            style=me.Style(display="flex", gap=15, margin=me.Margin.all(20))
+          ):
+            # Bot avatar/icon box
+            me.text(
+              "B",
+              style=me.Style(
+                background=me.theme_var("secondary"),
+                border_radius="50%",
+                color=me.theme_var("on-secondary"),
+                font_size=20,
+                height=40,
+                width="40px",
+                text_align="center",
+                line_height="1",
+                padding=me.Padding(top=10),
+                margin=me.Margin(top=16),
+              ),
+            )
+            # Bot message response
+            me.markdown(
+              msg.content,
+              style=me.Style(color=me.theme_var("on-surface")),
+            )
+
+    # This is for the basic chat input. This is the second row at 1fr.
+    # This section can be replaced with other types of chat inputs.
+    with me.box(
+      style=me.Style(
+        border_radius=16,
+        padding=me.Padding.all(8),
+        background=me.theme_var("surface-container-low"),
+        display="flex",
+        width="100%",
+      )
+    ):
+      with me.box(
+        style=me.Style(
+          flex_grow=1,
+        )
+      ):
+        me.native_textarea(
+          key="chat_input",
+          value=state.input,
+          on_blur=on_chat_input,
+          autosize=True,
+          min_rows=4,
+          placeholder="Subtle chat input",
+          style=me.Style(
+            color=me.theme_var("on-surface-variant"),
+            padding=me.Padding(top=16, left=16),
+            background=me.theme_var("surface-container-low"),
+            outline="none",
+            width="100%",
+            overflow_y="auto",
+            border=me.Border.all(
+              me.BorderSide(style="none"),
+            ),
+          ),
+        )
+      with me.content_button(
+        type="icon",
+        on_click=on_click_submit_chat_msg,
+        # If we're processing a message prevent new queries from being sent
+        disabled=state.in_progress,
+      ):
+        me.icon("send")
+
+
+def on_chat_input(e: me.InputBlurEvent):
+  """Capture chat text input on blur."""
+  state = me.state(State)
+  state.input = e.value
+
+
+def on_click_submit_chat_msg(e: me.ClickEvent):
+  """Handles submitting a chat message."""
+  state = me.state(State)
+  if state.in_progress or not state.input:
+    return
+  input = state.input
+  # Clear the text input.
+  state.input = ""
+  yield
+
+  output = state.output
+  if output is None:
+    output = []
+  output.append(ChatMessage(role="user", content=input))
+  state.in_progress = True
+  yield
+
+  start_time = time.time()
+  # Send user input and chat history to get the bot response.
+  output_message = respond_to_chat(input, state.output)
+  assistant_message = ChatMessage(role="bot")
+  output.append(assistant_message)
+  state.output = output
+  for content in output_message:
+    assistant_message.content += content
+    # TODO: 0.25 is an abitrary choice. In the future, consider making this adjustable.
+    if (time.time() - start_time) >= 0.25:
+      start_time = time.time()
+      yield
+
+  state.in_progress = False
+  me.focus_component(key="chat_input")
+  yield
+
+
+def respond_to_chat(input: str, history: list[ChatMessage]):
+  """Displays random canned text.
+
+  Edit this function to process messages with a real chatbot/LLM.
+  """
+  lines = [
+    "Mesop is a Python-based UI framework designed to simplify web UI development for engineers without frontend experience.",
+    "It leverages the power of the Angular web framework and Angular Material components, allowing rapid construction of web demos and internal tools.",
+    "With Mesop, developers can enjoy a fast build-edit-refresh loop thanks to its hot reload feature, making UI tweaks and component integration seamless.",
+    "Deployment is straightforward, utilizing standard HTTP technologies.",
+    "Mesop's component library aims for comprehensive Angular Material component coverage, enhancing UI flexibility and composability.",
+    "It supports custom components for specific use cases, ensuring developers can extend its capabilities to fit their unique requirements.",
+    "Mesop's roadmap includes expanding its component library and simplifying the onboarding processs.",
+  ]
+  for line in random.sample(lines, random.randint(3, len(lines) - 1)):
+    yield line + " "
+
+<example>
+
+<example>
+# This is an example of an advanced chat app.
+#
+# Features
+#
+# - Header with title
+# - Sidebar
+# - Start new chat
+# - Focus input
+# - Dark mode
+# - Rate responses
+# - Regenerate responses
+# - Examples
+import random
+import time
+from dataclasses import dataclass
+from typing import Literal
+
+import mesop as me
+
+Role = Literal["user", "bot"]
+# Render me.markdown if markdown
+# Render me.image if image
+MessageType = Literal["markdown", "image"]
+
+
+EXAMPLE_USER_QUERIES = (
+  "Create a basic chat UI.",
+  "Create a chat UI that renders content side by side from multiple LLMs.",
+  "Create an advanced chat UI with a header and sidebar.",
+)
+
+
+@dataclass(kw_only=True)
+class ChatMessage:
+  """Chat message metadata."""
+
+  role: Role = "user"
+  content: str = ""
+  edited: bool = False
+  # 1 is positive
+  # -1 is negative
+  # 0 is no rating
+  rating: int = 0
+  message_type: MessageType = "markdown"
+
+
+@me.stateclass
+class State:
+  input: str
+  output: list[ChatMessage]
+  in_progress: bool
+  sidebar_expanded: bool = False
+
+
+@me.page()
+def advanced_chat():
+  is_mobile = me.viewport_size().width < 640
+  state = me.state(State)
+  # This is the grid that manages the layout.
+  with me.box(
+    style=me.Style(
+      display="grid",
+      # First column is for the sidebar
+      # We use 1fr when the sidebar is not expanded and 7fr when it is expanded. This
+      # is because the sidebar takes up more space.
+      grid_template_columns="7fr 50fr"
+      if state.sidebar_expanded and not is_mobile
+      else "1fr 50fr",
+      # First row is for the header which is why we use 1fr.
+      grid_template_rows="1fr 50fr",
+      height="100%",
+    )
+  ):
+    # This block is the code for the sidebar
+    with me.box(
+      style=me.Style(
+        grid_row="1 / -1",
+        background=me.theme_var("surface-container"),
+        border=me.Border.symmetric(
+          horizontal=me.BorderSide(
+            width=1, style="solid", color=me.theme_var("outline-variant")
+          )
+        ),
+        height="100%",
+      )
+    ):
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        # Event handler to expand/collapse the sidebar.
+        on_click=on_click_menu_icon,
+        style=me.Style(
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        me.icon("menu")
+
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        on_click=on_click_new_chat,
+        style=me.Style(
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        if state.sidebar_expanded and not is_mobile:
+          with me.box(
+            style=me.Style(
+              display="flex",
+              align_items="center",
+              gap=5,
+            )
+          ):
+            me.icon("add")
+            me.text("New chat")
+        else:
+          with me.tooltip(message="New chat"):
+            me.icon("add")
+
+      # This block is code for the sidebar menu item.
+      # It needs click event handlers to add interaction.
+      with me.box(
+        on_click=on_click_theme_brightness,
+        style=me.Style(
+          cursor="pointer",
+          padding=me.Padding.all(15),
+        ),
+      ):
+        if state.sidebar_expanded and not is_mobile:
+          with me.box(
+            style=me.Style(
+              display="flex",
+              align_items="center",
+              gap=5,
+            )
+          ):
+            me.icon(
+              "light_mode" if me.theme_brightness() == "dark" else "dark_mode",
+            )
+            me.text(
+              "Light mode" if me.theme_brightness() == "dark" else "Dark mode"
+            )
+        else:
+          with me.tooltip(
+            message="Light mode"
+            if me.theme_brightness() == "dark"
+            else "Dark mode"
+          ):
+            me.icon(
+              "light_mode" if me.theme_brightness() == "dark" else "dark_mode"
+            )
+
+    with me.box(
+      style=me.Style(
+        background=me.theme_var("surface-container"),
+        padding=me.Padding.all(10),
+        border=me.Border(
+          bottom=me.BorderSide(
+            width=1, style="solid", color=me.theme_var("outline-variant")
+          )
+        ),
+      )
+    ):
+      if is_mobile:
+        default_flex_style = me.Style(
+          align_items="center",
+          display="flex",
+          gap=5,
+          justify_content="space-between",
+        )
+      else:
+        default_flex_style = me.Style(
+          align_items="center",
+          display="flex",
+          gap=5,
+          justify_content="space-between",
+        )
+
+      with me.box(style=default_flex_style):
+        with me.box(style=me.Style(display="flex", gap=5)):
+          me.text(
+            "Advanced Chat UI",
+            type="headline-6",
+            style=me.Style(margin=me.Margin(bottom=0)),
+          )
+
+        # Only show the "Made with Mesop" message on non-mobile screens.
+        if not is_mobile:
+          with me.box(style=me.Style(display="flex", gap=5)):
+            me.text(
+              "Made with ",
+              style=me.Style(
+                color=me.theme_var("on-surface-variant"),
+                font_weight="bold",
+                font_size=13,
+              ),
+            )
+            me.link(
+              text="Mesop",
+              url="https://google.github.io/mesop/",
+              open_in_new_tab=True,
+              style=me.Style(
+                color=me.theme_var("primary"),
+                text_decoration="none",
+                font_weight="bold",
+                font_size=13,
+              ),
+            )
+
+    # This block is for the main content to be added.
+    with me.box(style=me.Style(overflow_y="hidden")):
+      with me.box(
+        style=me.Style(
+          color=me.theme_var("on-surface"),
+          background=me.theme_var("surface-container-lowest"),
+          display="flex",
+          flex_direction="column",
+          padding=me.Padding.all(15),
+          height="100%",
+        )
+      ):
+        # If there are no messages yet, show some example queries for the user to get
+        # started with.
+        if not state.output:
+          with me.box(
+            style=me.Style(
+              overflow_y="scroll",
+              flex_grow=1,
+              color=me.theme_var("on-surface-variant"),
+            )
+          ):
+            with me.box(style=me.Style(margin=me.Margin(top=25), font_size=20)):
+              me.text("Get started with an example below")
+            with me.box(
+              style=me.Style(display="flex", gap=20, margin=me.Margin(top=25))
+            ):
+              for index, query in enumerate(EXAMPLE_USER_QUERIES):
+                with me.box(
+                  key=f"query-{index}",
+                  on_click=on_click_example_user_query,
+                  style=me.Style(
+                    background=me.theme_var("surface-container-highest"),
+                    border_radius=15,
+                    padding=me.Padding.all(20),
+                    cursor="pointer",
+                  ),
+                ):
+                  me.text(query)
+
+        else:
+          # This contains the chat messages that have been recorded. This takes 50fr.
+          # This section can be replaced with other types of chat messages.
+
+          # We set overflow to scroll so that the chat input will be fixed at the bottom.
+          with me.box(style=me.Style(overflow_y="scroll", flex_grow=1)):
+            for index, msg in enumerate(state.output):
+              # User chat message
+              if msg.role == "user":
+                with me.box(
+                  style=me.Style(
+                    display="flex",
+                    justify_content="end",
+                    gap=15,
+                    margin=me.Margin.all(20),
+                  )
+                ):
+                  with me.box(
+                    style=me.Style(
+                      border_radius=10,
+                      background=me.theme_var("surface-container"),
+                      color=me.theme_var("on-surface-variant"),
+                      padding=me.Padding.symmetric(vertical=0, horizontal=10),
+                      width="66%",
+                    )
+                  ):
+                    # User query
+                    me.markdown(msg.content)
+              else:
+                # Bot chat message
+                with me.box(
+                  style=me.Style(
+                    display="flex", gap=15, margin=me.Margin.all(20)
+                  )
+                ):
+                  # Bot avatar/icon box
+                  me.text(
+                    "M",
+                    style=me.Style(
+                      background=me.theme_var("primary"),
+                      border_radius="50%",
+                      color=me.theme_var("on-primary"),
+                      font_size=20,
+                      height=40,
+                      width="40px",
+                      text_align="center",
+                      line_height="1",
+                      padding=me.Padding(top=10),
+                      margin=me.Margin(top=16),
+                    ),
+                  )
+                  # Bot message response
+                  with me.box():
+                    me.markdown(
+                      msg.content,
+                      style=me.Style(color=me.theme_var("on-surface")),
+                    )
+
+                    rated_style = me.Style(
+                      background=me.theme_var("surface-container-low"),
+                      color=me.theme_var("on-surface-variant"),
+                    )
+                    with me.tooltip(message="Good response", position="above"):
+                      with me.content_button(
+                        type="icon",
+                        key=f"thumb_up-{index}",
+                        on_click=on_click_thumb_up,
+                        style=rated_style if msg.rating == 1 else None,
+                      ):
+                        me.icon("thumb_up")
+
+                    with me.tooltip(message="Bad response", position="above"):
+                      with me.content_button(
+                        type="icon",
+                        key=f"thumb_down-{index}",
+                        on_click=on_click_thumb_down,
+                        style=rated_style if msg.rating == -1 else None,
+                      ):
+                        me.icon("thumb_down")
+
+                    with me.tooltip(
+                      message="Regenerate answer", position="above"
+                    ):
+                      with me.content_button(
+                        type="icon",
+                        key=f"restart-{index}",
+                        on_click=on_click_regenerate,
+                      ):
+                        me.icon("restart_alt")
+
+        # This is for the basic chat input. This is the second row at 1fr.
+        # This section can be replaced with other types of chat inputs.
+        with me.box(
+          style=me.Style(
+            border_radius=16,
+            padding=me.Padding.all(8),
+            background=me.theme_var("surface-container-low"),
+            display="flex",
+          )
+        ):
+          with me.box(
+            style=me.Style(
+              flex_grow=1,
+            )
+          ):
+            me.native_textarea(
+              key="chat_input",
+              value=state.input,
+              on_blur=on_chat_input,
+              autosize=True,
+              min_rows=4,
+              placeholder="Subtle chat input",
+              style=me.Style(
+                color=me.theme_var("on-surface-variant"),
+                padding=me.Padding(top=16, left=16),
+                background=me.theme_var("surface-container-low"),
+                outline="none",
+                width="100%",
+                overflow_y="auto",
+                border=me.Border.all(
+                  me.BorderSide(style="none"),
+                ),
+              ),
+            )
+          with me.content_button(
+            type="icon",
+            on_click=on_click_submit_chat_msg,
+            # If we're processing a message prevent new queries from being sent
+            disabled=state.in_progress,
+          ):
+            me.icon("send")
+
+
+def on_click_example_user_query(e: me.ClickEvent):
+  """Populates the user input with the example query"""
+  state = me.state(State)
+  # Get the example index from the key
+  _, example_index = e.key.split("-")
+  state.input = EXAMPLE_USER_QUERIES[int(example_index)]
+
+
+def on_click_thumb_up(e: me.ClickEvent):
+  """Gives the message a positive rating"""
+  state = me.state(State)
+  # Get the message index from the key
+  _, msg_index = e.key.split("-")
+  msg_index = int(msg_index)
+  # Give a positive rating
+  state.output[msg_index].rating = 1
+
+
+def on_click_thumb_down(e: me.ClickEvent):
+  """Gives the message a negative rating"""
+  state = me.state(State)
+  # Get the message index from the key
+  _, msg_index = e.key.split("-")
+  msg_index = int(msg_index)
+  # Give a negative rating
+  state.output[msg_index].rating = -1
+
+
+def on_click_new_chat(e: me.ClickEvent):
+  """Resets messages."""
+  state = me.state(State)
+  state.output = []
+  me.focus_component(key="chat_input")
+
+
+def on_click_theme_brightness(e: me.ClickEvent):
+  """Toggles dark mode."""
+  if me.theme_brightness() == "light":
+    me.set_theme_mode("dark")
+  else:
+    me.set_theme_mode("light")
+
+
+def on_click_menu_icon(e: me.ClickEvent):
+  """Expands and collapses sidebar menu."""
+  state = me.state(State)
+  state.sidebar_expanded = not state.sidebar_expanded
+
+
+def on_chat_input(e: me.InputBlurEvent):
+  """Capture chat text input on blur."""
+  state = me.state(State)
+  state.input = e.value
+
+
+def on_click_regenerate(e: me.ClickEvent):
+  """Regenerates response from an existing message"""
+  state = me.state(State)
+  # Get message index from key
+  _, msg_index = e.key.split("-")
+  msg_index = int(msg_index)
+
+  # Get the user message which is the previous message
+  user_message = state.output[msg_index - 1]
+  # Get bot message to be regenerated
+  assistant_message = state.output[msg_index]
+  assistant_message.content = ""
+  state.in_progress = True
+  yield
+
+  start_time = time.time()
+  # Send in the old user input and chat history to get the bot response.
+  # We make sure to only pass in the chat history up to this message.
+  output_message = respond_to_chat(
+    user_message.content, state.output[:msg_index]
+  )
+  for content in output_message:
+    assistant_message.content += content
+    # TODO: 0.25 is an abitrary choice. In the future, consider making this adjustable.
+    if (time.time() - start_time) >= 0.25:
+      start_time = time.time()
+      yield
+
+  state.in_progress = False
+  me.focus_component(key="chat_input")
+  yield
+
+
+def on_click_submit_chat_msg(e: me.ClickEvent):
+  """Handles submitting a chat message."""
+  state = me.state(State)
+  if state.in_progress or not state.input:
+    return
+  input = state.input
+  # Clear the text input.
+  state.input = ""
+  yield
+
+  output = state.output
+  if output is None:
+    output = []
+  output.append(ChatMessage(role="user", content=input))
+  state.in_progress = True
+  yield
+
+  start_time = time.time()
+  # Send user input and chat history to get the bot response.
+  output_message = respond_to_chat(input, state.output)
+  assistant_message = ChatMessage(role="bot")
+  output.append(assistant_message)
+  state.output = output
+  for content in output_message:
+    assistant_message.content += content
+    # TODO: 0.25 is an abitrary choice. In the future, consider making this adjustable.
+    if (time.time() - start_time) >= 0.25:
+      start_time = time.time()
+      yield
+
+  state.in_progress = False
+  me.focus_component(key="chat_input")
+  yield
+
+
+def respond_to_chat(input: str, history: list[ChatMessage]):
+  """Displays random canned text.
+
+  Edit this function to process messages with a real chatbot/LLM.
+  """
+  lines = [
+    "Mesop is a Python-based UI framework designed to simplify web UI development for engineers without frontend experience.",
+    "It leverages the power of the Angular web framework and Angular Material components, allowing rapid construction of web demos and internal tools.",
+    "With Mesop, developers can enjoy a fast build-edit-refresh loop thanks to its hot reload feature, making UI tweaks and component integration seamless.",
+    "Deployment is straightforward, utilizing standard HTTP technologies.",
+    "Mesop's component library aims for comprehensive Angular Material component coverage, enhancing UI flexibility and composability.",
+    "It supports custom components for specific use cases, ensuring developers can extend its capabilities to fit their unique requirements.",
+    "Mesop's roadmap includes expanding its component library and simplifying the onboarding processs.",
+  ]
+
+  for line in random.sample(lines, random.randint(3, len(lines) - 1)):
+    yield line + " "
+
+<example>
