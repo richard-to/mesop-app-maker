@@ -22,8 +22,7 @@ The Mesop App Maker consists of two Mesop apps, the editor and the app runner.
 The editor is the Mesop app that allows you to generate, edit, and view Mesop apps.
 
 ```shell
-cd editor
-pip install -r requirements.txt  # First time only
+pip install -r requirements.txt
 mesop main.py
 ```
 
@@ -38,6 +37,7 @@ The [Mesop App Runner](https://github.com/richard-to/mesop-app-runner) uses Dock
 It can be started using these commands:
 
 ```shell
+# In mesop-app-runner directory
 docker stop mesop-app-runner;
 docker rm mesop-app;
 docker build -t mesop-app-runner . && docker run --name mesop-app-runner -d -p 8080:8080 mesop-app-runner;
