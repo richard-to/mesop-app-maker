@@ -97,6 +97,12 @@ def main():
   with mex.dialog(state.show_help_dialog):
     me.text("Usage Instructions", type="headline-6")
     me.markdown(HELP_TEXT)
+    me.link(
+      text="See Github repository for full instructions.",
+      url="https://github.com/richard-to/mesop-app-runner",
+      open_in_new_tab=True,
+      style=me.Style(color=me.theme_var("primary")),
+    )
     with mex.dialog_actions():
       me.button(
         "Close",

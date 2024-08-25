@@ -21,10 +21,9 @@ HELP_TEXT = """
 
 **Setting up a Mesop Runner instance**
 
-*If running on Hugging Face, you will need to duplicate the [Mesop App Runner space](https://huggingface.co/spaces/richard-to/mesop-app-runner).*
+*If running on Hugging Face, you will need to duplicate the Mesop App Runner space.*
 
-- Start up an instance of the [Mesop App Runner](https://github.com/richard-to/mesop-app-runner).
-    - See [Github repository](https://github.com/richard-to/mesop-app-runner) for more details.
+- Start up an instance of the Mesop App Runner.
 - Provide the Runner URL to your instance.
 - Provide the Runner Token to your runner instance.
 """.strip()
