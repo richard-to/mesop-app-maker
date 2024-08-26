@@ -9,7 +9,6 @@ import components as mex
 import handlers
 import llm
 from constants import (
-  DEFAULT_URL,
   PROMPT_MODE_REVISE,
   PROMPT_MODE_GENERATE,
   HELP_TEXT,
@@ -395,7 +394,7 @@ def main():
         with me.box():
           me.embed(
             key=str(state.iframe_index),
-            src=state.loaded_url or DEFAULT_URL,
+            src=state.loaded_url,
             style=me.Style(
               background=me.theme_var("surface-container-lowest"),
               width="100%",

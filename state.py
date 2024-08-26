@@ -37,7 +37,7 @@ class State:
   # App preview
   run_result: str
   runner_url_path: str = "/"
-  loaded_url: str
+  loaded_url: str = os.getenv("MESOP_APP_MAKER_RUNNER_URL", c.DEFAULT_URL)
   iframe_index: int
 
   # Sidebar
