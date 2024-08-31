@@ -1,3 +1,113 @@
+Layout in Mesop is very similar to using HTML and CSS for styling, so you can use
+your expertise in HTML / CSS to layout Mesop apps.
+
+Note that there are some limitations and differences. You will need to use me.box as a
+replacement for HTML tags such as divs, span, header, aside, etc. The me.box component
+behaves most close to a div.
+
+Mesop also relies on inline styles. It also does not support all css styles yet, so you
+will need to check the me.Style API for what is supported.
+
+Here is an example of a layout in HTML/CSS.
+
+First the CSS:
+
+```css
+<style>
+  .container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  .header {
+    background-color: #333;
+    color: white;
+    padding: 1rem;
+  }
+  .content {
+    display: flex;
+    flex: 1;
+  }
+  .sidebar {
+    background-color: #f0f0f0;
+    width: 200px;
+    padding: 1rem;
+  }
+  .main {
+    flex: 1;
+    padding: 1rem;
+  }
+</style>
+```
+
+Next the HTML:
+
+```html
+<div class="container">
+  <div class="header">
+    <h1>My Website</h1>
+  </div>
+  <div class="content">
+    <div class="sidebar">
+      <h2>Sidebar</h2>
+      <p>Sidebar content</p>
+    </div>
+    <div class="main">
+      <h2>Main Content</h2>
+      <p>This is the main content area. You can add your page-specific content here.</p>
+    </div>
+  </div>
+</div>
+```
+
+In Mesop, this looks like:
+
+```python
+import mesop as me
+
+STYLE_CONTAINER = me.Style(
+  display="flex",
+  flex_direction="column",
+  height="100vh",
+)
+STYLE_HEADER = me.Style(
+  background="#333",
+  color="white",
+  padding=me.Padding.all("1rem"),
+)
+
+STYLE_CONTENT = me.Style(
+  display="flex",
+  flex_grow=1,
+)
+
+STYLE_SIDEBAR = me.Style(
+  background="#f0f0f0",
+  width="200px",
+  padding=me.Padding.all("1rem"),
+)
+
+STYLE_MAIN = me.Style(
+  flex_grow=1,
+  padding=me.Padding.all("1rem"),
+)
+
+@me.page()
+def app():
+  with me.box(style=STYLE_CONTAINER):
+    with me.box(style=STYLE_HEADER):
+      me.text("My Website", type="headline-4")
+
+    with me.box(style=STYLE_CONTENT):
+      with me.box(style=STYLE_SIDEBAR):
+        me.text("Sidebar", type="headline-5")
+        me.text("Sidebar content")
+
+      with me.box(style=STYLE_MAIN):
+        me.text("Main Content", type="headline-5")
+        me.text("This is the main content area. You can add your page-specific content here")
+```
+
 This section provides examples of Mesop code usage. Each example is wrapped in <example> tags.
 
 <example>
@@ -1850,4 +1960,3 @@ def card(resource: Resource):
         )
 
 <example>
-

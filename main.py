@@ -180,13 +180,10 @@ def main():
   ):
     for prompt_history in reversed(state.prompt_history):
       with me.box(
-        key=f"prompt-{prompt_history['index']}",
         on_click=on_click_history_prompt,
+        key=f"prompt-{prompt_history['index']}",
         style=me.Style(
           background=me.theme_var("surface-container"),
-          border=me.Border.all(
-            me.BorderSide(width=1, color=me.theme_var("outline-variant"), style="solid")
-          ),
           border_radius=5,
           cursor="pointer",
           margin=me.Margin.symmetric(vertical=10),
@@ -202,7 +199,7 @@ def main():
       display="grid",
       grid_template_columns="1fr 2fr 35fr" if state.menu_open else "1fr 40fr",
       height="100vh",
-    )
+    ),
   ):
     with me.box(
       style=me.Style(
