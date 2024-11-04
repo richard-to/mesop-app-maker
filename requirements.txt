@@ -1,4 +1,4 @@
-mesop==0.12.4
+mesop==0.12.8
 requests
-google_generativeai
+google-generativeai
 gunicorn
